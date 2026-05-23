@@ -1,0 +1,32 @@
+# NiceEze 共通基盤 依存ライブラリ
+# Ver 2.1
+
+# ── Google Drive / Docs API ──────────────────
+google-api-python-client>=2.140.0
+google-auth>=2.34.0
+google-auth-oauthlib>=1.2.1
+google-auth-httplib2>=0.2.0
+
+# ── テスト ────────────────────────────────────
+pytest>=8.3.0
+pytest-cov>=6.0.0
+pytest-asyncio>=0.24.0
+
+# ── セキュリティスキャン ───────────────────────
+bandit>=1.8.0
+safety>=3.2.0
+
+# ── DB / ORM ─────────────────────────────────
+supabase>=2.9.0
+psycopg2-binary>=2.9.10
+SQLAlchemy>=2.0.36
+alembic>=1.14.0
+
+# ── 暗号化 ────────────────────────────────────
+cryptography>=43.0.3
+bcrypt>=4.2.0
+
+# ── ユーティリティ ─────────────────────────────
+python-dotenv>=1.0.1
+pydantic>=2.10.0
+httpx>=0.28.0

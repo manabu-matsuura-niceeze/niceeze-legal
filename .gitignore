@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+docs/audit/gdrive_mock/
+.test-results.xml
+.pip-audit-results.json
+.env
+*.env
+config/gdrive_service_account.json
+.vscode/
+.idea/
+*.swp
