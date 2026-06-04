@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RES-A01 — 最廉価リサーチ | NiceEze</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #f0f4f8; color: #1e293b; }
+
+  /* ── ヘッダー ── */
+  header {
+    background: #1a3a5c; color: white; padding: 12px 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { font-size: 16px; font-weight: 700; }
+  header span { font-size: 11px; color: #bfd7ed; }
+
+  /* ── レイアウト: 上部・中央・下部 ── */
+  .layout { max-width: 1100px; margin: 16px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* 上部: 検索エリア */
+  .section-top {
+    background: white; border-radius: 8px; padding: 16px;
+    border: 1px solid #cbd5e1;
+  }
+  .section-top h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 12px; }
+  .search-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  .search-row label { font-size: 12px; color: #64748b; display: block; margin-bottom: 4px; }
+  .search-row input {
+    border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px;
+    font-size: 13px; width: 260px;
+  }
+  .search-row input:focus { outline: none; border-color: #1a3a5c; }
+  .cat-select {
+    border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px;
+    font-size: 13px; width: 200px; background: white;
+  }
+  .btn-search {
+    background: #1a3a5c; color: white; border: none; border-radius: 6px;
+    padding: 8px 20px; font-size: 13px; cursor: pointer; font-weight: 600;
+  }
+  .btn-search:hover { background: #2a5a8c; }
+
+  /* 中央: 8社比較マトリクス */
+  .section-mid {
+    background: white; border-radius: 8px; padding: 16px;
+    border: 1px solid #cbd5e1; overflow-x: auto;
+  }
+  .section-mid h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 12px; }
+  .matrix-table {
+    width: 100%; border-collapse: collapse; font-size: 12px;
+  }
+  .matrix-table th {
+    background: #1a3a5c; color: white; padding: 8px 10px; text-align: left;
+    white-space: nowrap;
+  }
+  .matrix-table th.num-col { text-align: right; }
+  .matrix-table td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+  .matrix-table tr:hover td { background: #f8fafc; }
+  .matrix-table tr.cheapest td { background: #f0fdf4; }
+  .matrix-table tr.cheapest td:first-child { font-weight: 700; color: #16a34a; }
+  /* font-mono tabular-nums tracking-tight on ALL numeric cells — LAYOUT_MASTER.md 1-1 */
+  .num { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; text-align: right; }
+  .badge-best { background: #16a34a; color: white; border-radius: 4px; padding: 1px 6px; font-size: 10px; margin-left: 4px; }
+  .badge-unavail { background: #94a3b8; color: white; border-radius: 4px; padding: 1px 6px; font-size: 10px; }
+  .gap-info { font-size: 11px; color: #64748b; margin-top: 8px; }
+  .gap-info strong { color: #f5a623; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  /* 下部: 競合5品ドリルダウン */
+  .section-bot {
+    background: white; border-radius: 8px; padding: 16px;
+    border: 1px solid #cbd5e1;
+  }
+  .section-bot h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 12px; }
+  .drill-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px;
+  }
+  .drill-card {
+    border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .drill-card:hover { border-color: #1a3a5c; }
+  .drill-card .dc-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .drill-card .dc-price { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; font-size: 13px; color: #1a3a5c; }
+  .drill-card .dc-diff { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .drill-card .dc-diff.cheaper { color: #16a34a; }
+  .drill-card .dc-diff.pricier { color: #dc2626; }
+
+  /* 空状態 */
+  .empty { text-align: center; color: #94a3b8; padding: 40px; font-size: 13px; }
+
+  /* ローディング */
+  .loading { display: none; text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+  .loading.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>RES-A01 — 最廉価リサーチ（8社価格マトリクス）</h1>
+    <span>Ver 1.0 | Research部 特急MVP | FinOps: ¥0/月（MVP段階）</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- 上部: 検索 -->
+  <div class="section-top">
+    <h2>🔍 キーワード / 型番 検索</h2>
+    <div class="search-row">
+      <div>
+        <label>キーワード / 型番</label>
+        <input type="text" id="kwInput" placeholder="例: コカ・コーラ 500ml / iPhone 15" />
+      </div>
+      <div>
+        <label>カテゴリ</label>
+        <select id="catSelect" class="cat-select">
+          <option value="">— カテゴリ選択 —</option>
+          <option value="食品・飲料">食品・飲料</option>
+          <option value="日用品・消耗品">日用品・消耗品</option>
+          <option value="家電・ガジェット">家電・ガジェット</option>
+          <option value="衣料・ファッション">衣料・ファッション</option>
+          <option value="美容・健康">美容・健康</option>
+          <option value="ペット用品">ペット用品</option>
+          <option value="スポーツ・アウトドア">スポーツ・アウトドア</option>
+          <option value="ホーム・インテリア">ホーム・インテリア</option>
+        </select>
+      </div>
+      <div>
+        <label>追加プラットフォーム（任意）</label>
+        <input type="text" id="extraPlatform" placeholder="例: ヤマダウェブコム" style="width:200px" />
+      </div>
+      <button class="btn-search" onclick="runSearch()">検索</button>
+    </div>
+  </div>
+
+  <!-- 中央: 8社比較マトリクス -->
+  <div class="section-mid">
+    <h2>📊 8社比較マトリクス（1ケース / 1個あたり単価）</h2>
+    <div class="loading" id="loadingMatrix">検索中...</div>
+    <div id="matrixArea">
+      <div class="empty">キーワードを入力して「検索」を押してください</div>
+    </div>
+    <div class="gap-info" id="gapInfo" style="display:none">
+      最安値と最高値の価格差: <strong id="gapValue">—</strong>%
+    </div>
+  </div>
+
+  <!-- 下部: 競合5品ドリルダウン -->
+  <div class="section-bot">
+    <h2>🔎 同カテゴリ上位5品（クリックで再帰ドリルダウン）</h2>
+    <div id="drillArea">
+      <div class="empty">検索後にドリルダウン候補が表示されます</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+const IDB_NAME = 'niceeze_cache_v142';
+const IDB_VERSION = 142;
+
+// LAYOUT_MASTER準拠: 全サプライヤー固定8社
+const SUPPLIERS = [
+  'Amazon', '楽天市場', 'Yahoo!ショッピング', 'au PAY マーケット',
+  'Qoo10', 'ヨドバシカメラ', 'ビックカメラ', 'ヤマダ電機',
+];
+
+// IndexedDB helpers
+let idb = null;
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    if (idb) { resolve(idb); return; }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('res_a01')) {
+        db.createObjectStore('res_a01', { keyPath: 'cache_key' });
+      }
+    };
+    req.onsuccess = e => { idb = e.target.result; resolve(idb); };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGet(key) {
+  const db = await openIDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction('res_a01', 'readonly');
+    const req = tx.objectStore('res_a01').get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => resolve(null);
+  });
+}
+async function idbPut(data) {
+  const db = await openIDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction('res_a01', 'readwrite');
+    tx.objectStore('res_a01').put(data);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+// モック価格生成（MVPはフロントで生成 / G2でCloud Run API連携）
+function mockHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function mockRecord(keyword, supplier) {
+  const seed = mockHash(keyword + ':' + supplier);
+  const base = 800 + (seed % 4200);
+  const lotChoices = [1, 6, 12, 24];
+  const lotSize = lotChoices[seed % 4];
+  const shipping = base >= 2000 ? 0 : 550;
+  const avail = (seed % 17) > 2;
+  return { supplier, price_jpy: base, shipping_jpy: shipping, lot_size: lotSize, is_available: avail };
+}
+function buildMatrix(keyword, category) {
+  const key = btoa(unescape(encodeURIComponent(keyword + ':' + category))).slice(0, 16);
+  const records = SUPPLIERS.map(s => mockRecord(keyword, s));
+  records.sort((a, b) => {
+    const ua = (a.price_jpy + a.shipping_jpy) / Math.max(a.lot_size, 1);
+    const ub = (b.price_jpy + b.shipping_jpy) / Math.max(b.lot_size, 1);
+    if (!a.is_available && b.is_available) return 1;
+    if (a.is_available && !b.is_available) return -1;
+    return ua - ub;
+  });
+  return { cache_key: key, keyword, category, records, created_at: new Date().toISOString(), _idb_version: IDB_VERSION };
+}
+
+async function runSearch() {
+  const kw = document.getElementById('kwInput').value.trim();
+  const cat = document.getElementById('catSelect').value || '—';
+  if (!kw) { alert('キーワードを入力してください'); return; }
+
+  document.getElementById('loadingMatrix').classList.add('active');
+  document.getElementById('matrixArea').innerHTML = '';
+  document.getElementById('gapInfo').style.display = 'none';
+
+  await new Promise(r => setTimeout(r, 300)); // UX delay
+
+  const cacheKey = btoa(unescape(encodeURIComponent(kw + ':' + cat))).slice(0, 16);
+  let matrix = await idbGet(cacheKey);
+  if (!matrix) {
+    matrix = buildMatrix(kw, cat);
+    await idbPut(matrix);
+  }
+
+  document.getElementById('loadingMatrix').classList.remove('active');
+  renderMatrix(matrix);
+  renderDrill(kw, cat, matrix);
+}
+
+function renderMatrix(matrix) {
+  const avail = matrix.records.filter(r => r.is_available);
+  const minUnit = avail.length ? Math.min(...avail.map(r => (r.price_jpy + r.shipping_jpy) / Math.max(r.lot_size, 1))) : null;
+  const maxUnit = avail.length ? Math.max(...avail.map(r => (r.price_jpy + r.shipping_jpy) / Math.max(r.lot_size, 1))) : null;
+  const gap = (minUnit && maxUnit && minUnit > 0) ? ((maxUnit - minUnit) / minUnit * 100).toFixed(1) : null;
+
+  let html = `<table class="matrix-table">
+    <thead><tr>
+      <th>サプライヤー</th>
+      <th class="num-col">税込価格</th>
+      <th class="num-col">送料</th>
+      <th class="num-col">ロット</th>
+      <th class="num-col">1ケース価格</th>
+      <th class="num-col">1個あたり単価</th>
+      <th>在庫</th>
+    </tr></thead><tbody>`;
+
+  for (const r of matrix.records) {
+    const total = r.price_jpy + r.shipping_jpy;
+    const unit = total / Math.max(r.lot_size, 1);
+    const isBest = r.is_available && Math.abs(unit - minUnit) < 0.01;
+    const rowClass = isBest ? 'cheapest' : '';
+    const availBadge = r.is_available
+      ? (isBest ? '<span class="badge-best">最安値</span>' : '✅')
+      : '<span class="badge-unavail">在庫なし</span>';
+    html += `<tr class="${rowClass}">
+      <td>${r.supplier}${isBest ? '<span class="badge-best">最安値</span>' : ''}</td>
+      <td class="num">¥${r.price_jpy.toLocaleString()}</td>
+      <td class="num">${r.shipping_jpy === 0 ? '無料' : '¥' + r.shipping_jpy.toLocaleString()}</td>
+      <td class="num">${r.lot_size}個</td>
+      <td class="num">¥${total.toLocaleString()}</td>
+      <td class="num">¥${unit.toFixed(1)}</td>
+      <td>${r.is_available ? (isBest ? '' : '✅') : '<span class="badge-unavail">在庫なし</span>'}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('matrixArea').innerHTML = html;
+
+  if (gap !== null) {
+    document.getElementById('gapValue').textContent = gap;
+    document.getElementById('gapInfo').style.display = 'block';
+  }
+}
+
+function renderDrill(baseKw, cat, baseMatrix) {
+  const avail = baseMatrix.records.filter(r => r.is_available);
+  if (!avail.length) { document.getElementById('drillArea').innerHTML = '<div class="empty">在庫あり商品がありません</div>'; return; }
+  const baseUnit = Math.min(...avail.map(r => (r.price_jpy + r.shipping_jpy) / Math.max(r.lot_size, 1)));
+
+  const suffixes = ['Pro', 'Lite', '大容量', 'エコパック', 'セット品'];
+  let html = '<div class="drill-grid">';
+  for (let i = 0; i < 5; i++) {
+    const variant = baseKw + ' ' + suffixes[i];
+    const m = buildMatrix(variant, cat);
+    const av = m.records.filter(r => r.is_available);
+    if (!av.length) continue;
+    const minU = Math.min(...av.map(r => (r.price_jpy + r.shipping_jpy) / Math.max(r.lot_size, 1)));
+    const diff = minU - baseUnit;
+    const diffClass = diff < 0 ? 'cheaper' : 'pricier';
+    const diffSign = diff < 0 ? '▼' : '▲';
+    html += `<div class="drill-card" onclick="drillInto('${variant.replace(/'/g,"\\'")}', '${cat}')">
+      <div class="dc-name">${variant}</div>
+      <div class="dc-price">最安 ¥${minU.toFixed(1)}/個</div>
+      <div class="dc-diff ${diffClass}">${diffSign}¥${Math.abs(diff).toFixed(1)} vs 現在商品</div>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('drillArea').innerHTML = html;
+}
+
+function drillInto(kw, cat) {
+  document.getElementById('kwInput').value = kw;
+  document.getElementById('catSelect').value = cat;
+  runSearch();
+}
+
+document.getElementById('kwInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runSearch();
+});
+</script>
+</body>
+</html>

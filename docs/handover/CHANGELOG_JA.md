@@ -105,6 +105,58 @@
 
 ---
 
+## [INST-001] 2026-06-04 — ドキュメント自動生成体制構築 + SBDS 5ドキュメント v1.0
+
+### 追加
+- `docs/instructions/DOC_GEN_INSTRUCTION_v1.0.md` — CEO発行指示書（25ドキュメント体制）
+- `scripts/gen_sbds_brd.py` / `gen_sbds_srs.py` / `gen_sbds_pptx.py` — docx/pptx生成スクリプト
+- `docs/SBDS/SBDS_BRD_v1.0.docx` (42,070 bytes)
+- `docs/SBDS/SBDS_SRS_v1.0.docx` (43,259 bytes)
+- `docs/SBDS/SBDS_SEQ_v1.0.pptx` (40,831 bytes)
+- `docs/SBDS/SBDS_UI_v1.0.pptx` (38,729 bytes)
+- `docs/SBDS/SBDS_PHASE_v1.0.pptx` (38,551 bytes)
+
+### Google Drive
+- GDrive SBDS subfolder作成: `1oLP5qKza7JH2VjZ-ukRbv1pfeUkEZlP9`（5ファイルアップロード予定）
+
+---
+
+## [SPECIAL-001] 2026-06-04 — RESEARCH・MARKETING 特急レーン MVP実装完了
+
+### CEO承認
+- 松浦CEO承認: 2026年6月5日付 特急ローンチ指示
+- RESEARCH・MARKETINGを通常レーンから切り離し独立並列開発
+
+### 追加（RESEARCH部）
+- `src/research/__init__.py` — モジュール初期化
+- `src/research/res_a01.py` — 8社価格マトリクス（PriceRecord/PriceMatrix/PriceFetcher）
+  - SHA-256キャッシュキー / bandit 0件 / PII不使用
+- `src/research/res_a02.py` — トレンドスコア（growth/bestseller/retention/is_staple）
+  - RETENTION_THRESHOLD=0.6 / S_retention ≥ 0.6 → 定番判定
+- `src/research/static/res_a01.html` — RES-A01 UI（LAYOUT_MASTER準拠）
+  - 8社固定マトリクス / font-mono tabular-nums 全数値列 / IndexedDB v142 / 競合5品ドリルダウン
+- `src/research/static/res_a02.html` — RES-A02 UI（LAYOUT_MASTER準拠）
+  - 8カテゴリチップ / 3モード切替 / S_retention font-mono / TODO自動起票
+
+### 追加（MARKETING部）
+- `src/marketing/__init__.py` — モジュール初期化
+- `src/marketing/news_crawler.py` — Google News RSS 8カテゴリクローラー
+  - SHA-256 article_id（md5廃止・bandit B324解消）/ モックフォールバック
+- `src/marketing/content_generator.py` — 4フォーマット自動生成
+  - X(140文字) / メルマガHTML / Note Markdown / YouTube台本（手動アップロード）
+- `src/marketing/scheduler.py` — 朝8:00/夜19:00 Cloud Functions エントリポイント
+  - cron "0 23 * * *"(朝JST) / "0 10 * * *"(夜JST) / FinOps月額¥0（MVP）
+- `src/marketing/static/smart_mkt.html` — SMART-MKT UI（LAYOUT_MASTER準拠）
+  - 4フォーマットタブ切替 / トーン選択 / HTMLプレビュー / コピーボタン
+
+### ハードゲート自己承認
+- PII不使用: ✅ / FinOps¥5,000以内: ✅（MVP¥0） / LAYOUT_MASTER準拠: ✅ / bandit 0件: ✅
+
+### 進捗報告
+- `docs/reports/NiceEze_特急レーン初回進捗報告_20260604.md` — 提出
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |

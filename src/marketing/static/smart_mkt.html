@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMART-MKT — 自律マーケティング | NiceEze</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #f0f4f8; color: #1e293b; }
+
+  header {
+    background: #1a3a5c; color: white; padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 16px; font-weight: 700; }
+  header span { font-size: 11px; color: #bfd7ed; }
+  .schedule-badge {
+    background: rgba(255,255,255,0.12); border-radius: 6px; padding: 4px 10px;
+    font-size: 11px; color: #bfd7ed;
+  }
+
+  .layout { max-width: 1200px; margin: 16px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* 上部: トピック入力 */
+  .section-top {
+    background: white; border-radius: 8px; padding: 16px; border: 1px solid #cbd5e1;
+  }
+  .section-top h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 12px; }
+  .input-grid { display: grid; grid-template-columns: 1fr 1fr 160px 120px; gap: 10px; align-items: end; }
+  .input-grid label { font-size: 12px; color: #64748b; display: block; margin-bottom: 4px; }
+  .input-grid input, .input-grid select {
+    border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px;
+    font-size: 13px; width: 100%; background: white;
+  }
+  .input-grid input:focus, .input-grid select:focus { outline: none; border-color: #1a3a5c; }
+  .btn-gen {
+    background: #f5a623; color: white; border: none; border-radius: 6px;
+    padding: 8px 16px; font-size: 13px; cursor: pointer; font-weight: 700; width: 100%;
+  }
+  .btn-gen:hover { background: #e09010; }
+  .tone-row { display: flex; gap: 6px; margin-top: 10px; }
+  .tone-chip {
+    border: 1px solid #cbd5e1; border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; cursor: pointer; background: white;
+  }
+  .tone-chip.active { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+
+  /* 中央: 4フォーマット出力 */
+  .section-mid {
+    background: white; border-radius: 8px; padding: 16px; border: 1px solid #cbd5e1;
+  }
+  .section-mid h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 14px; }
+  .format-tabs { display: flex; gap: 0; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
+  .fmt-tab {
+    flex: 1; padding: 8px 6px; font-size: 12px; font-weight: 600;
+    cursor: pointer; text-align: center; background: #f8fafc; border: none;
+    transition: all 0.15s;
+  }
+  .fmt-tab.active { background: #1a3a5c; color: white; }
+  .fmt-tab:not(.active):hover { background: #e2e8f0; }
+  .fmt-panel { display: none; }
+  .fmt-panel.active { display: block; }
+
+  /* X投稿 */
+  .x-post-box {
+    border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;
+    font-size: 14px; line-height: 1.6; white-space: pre-wrap; min-height: 80px;
+    margin-bottom: 10px; background: #f8fafc;
+  }
+  .x-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #64748b; }
+  .char-count { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
+  .char-over { color: #dc2626; font-weight: 700; }
+  .hashtag-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .hashtag-chip { background: #dbeafe; color: #1d4ed8; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
+
+  /* メルマガ */
+  .nl-subject { font-size: 13px; font-weight: 700; margin-bottom: 10px; padding: 8px; background: #f1f5f9; border-radius: 4px; border-left: 3px solid #1a3a5c; }
+  .nl-preview { border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; max-height: 400px; overflow-y: auto; }
+
+  /* Note / YouTube */
+  .md-preview {
+    border: 1px solid #cbd5e1; border-radius: 6px; padding: 14px;
+    font-size: 12px; line-height: 1.7; white-space: pre-wrap; max-height: 400px; overflow-y: auto;
+    background: #f8fafc; font-family: ui-monospace, monospace;
+  }
+  .yt-notice {
+    background: #fef9c3; border: 1px solid #fbbf24; border-radius: 6px; padding: 10px 14px;
+    font-size: 12px; color: #854d0e; margin-bottom: 10px;
+  }
+
+  /* コピーボタン */
+  .btn-copy-fmt {
+    margin-top: 10px; background: white; border: 1px solid #cbd5e1;
+    border-radius: 6px; padding: 6px 14px; font-size: 12px; cursor: pointer;
+  }
+  .btn-copy-fmt:hover { background: #f1f5f9; }
+
+  /* 下部: スケジュール状態 */
+  .section-bot {
+    background: white; border-radius: 8px; padding: 16px; border: 1px solid #cbd5e1;
+  }
+  .section-bot h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 12px; }
+  .sched-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sched-card {
+    border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;
+  }
+  .sched-card .sc-time { font-size: 22px; font-weight: 700; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; color: #1a3a5c; }
+  .sched-card .sc-label { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .sched-card .sc-status { font-size: 11px; margin-top: 6px; }
+  .status-ok { color: #16a34a; }
+  .status-pend { color: #f5a623; }
+
+  .empty { text-align: center; color: #94a3b8; padding: 40px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>SMART-MKT — 自律マーケティング（4フォーマット自動生成）</h1>
+    <span>Ver 1.0 | Marketing部 特急MVP | FinOps: ¥0/月（MVPはテンプレートベース）</span>
+  </div>
+  <div class="schedule-badge">⏰ 朝8:00 / 夜19:00 自動実行</div>
+</header>
+
+<div class="layout">
+
+  <!-- 上部: 入力 -->
+  <div class="section-top">
+    <h2>✍️ コンテンツ生成入力</h2>
+    <div class="input-grid">
+      <div>
+        <label>テーマ・キーワード</label>
+        <input type="text" id="topicInput" placeholder="例: 冷凍食品 EC需要増加" />
+      </div>
+      <div>
+        <label>カテゴリ</label>
+        <select id="catSelect">
+          <option value="ビジネス・経済">ビジネス・経済</option>
+          <option value="テクノロジー・IT">テクノロジー・IT</option>
+          <option value="ライフスタイル・トレンド">ライフスタイル・トレンド</option>
+          <option value="食品・グルメ" selected>食品・グルメ</option>
+          <option value="健康・ウェルネス">健康・ウェルネス</option>
+          <option value="EC・流通・物流">EC・流通・物流</option>
+          <option value="マーケティング・SNS">マーケティング・SNS</option>
+          <option value="不動産・住宅">不動産・住宅</option>
+        </select>
+      </div>
+      <div>
+        <label>トレンドスコア (0〜1)</label>
+        <input type="number" id="trendScore" value="0.75" min="0" max="1" step="0.05" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button class="btn-gen" onclick="generate()">▶ 生成</button>
+      </div>
+    </div>
+    <div class="tone-row">
+      <span style="font-size:11px;color:#64748b;align-self:center">トーン:</span>
+      <div class="tone-chip active" onclick="setTone('professional', this)">Professional</div>
+      <div class="tone-chip" onclick="setTone('casual', this)">Casual</div>
+      <div class="tone-chip" onclick="setTone('urgent', this)">Urgent</div>
+    </div>
+    <input type="hidden" id="toneVal" value="professional" />
+    <input type="hidden" id="productInput" value="" />
+  </div>
+
+  <!-- 中央: 4フォーマット -->
+  <div class="section-mid">
+    <h2>📤 4フォーマット出力</h2>
+    <div class="format-tabs">
+      <button class="fmt-tab active" onclick="switchFmt('x')">𝕏 X投稿</button>
+      <button class="fmt-tab" onclick="switchFmt('nl')">📧 メルマガ</button>
+      <button class="fmt-tab" onclick="switchFmt('note')">📝 Note原稿</button>
+      <button class="fmt-tab" onclick="switchFmt('yt')">▶ YouTube台本</button>
+    </div>
+
+    <!-- X投稿 -->
+    <div class="fmt-panel active" id="panel-x">
+      <div class="empty" id="x-empty">コンテンツを生成してください</div>
+      <div id="x-content" style="display:none">
+        <div class="x-post-box" id="xPostBox"></div>
+        <div class="x-meta">
+          <span>文字数: <span class="char-count" id="xCharCount">0</span>/140</span>
+          <div class="hashtag-chips" id="xHashtags"></div>
+        </div>
+        <button class="btn-copy-fmt" onclick="copyPanel('x')">コピー</button>
+      </div>
+    </div>
+
+    <!-- メルマガ -->
+    <div class="fmt-panel" id="panel-nl">
+      <div class="empty" id="nl-empty">コンテンツを生成してください</div>
+      <div id="nl-content" style="display:none">
+        <div class="nl-subject" id="nlSubject"></div>
+        <div class="nl-preview"><iframe id="nlIframe" style="width:100%;height:380px;border:none"></iframe></div>
+        <button class="btn-copy-fmt" onclick="copyPanel('nl')">HTMLコピー</button>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="fmt-panel" id="panel-note">
+      <div class="empty" id="note-empty">コンテンツを生成してください</div>
+      <div id="note-content" style="display:none">
+        <div class="md-preview" id="noteMd"></div>
+        <button class="btn-copy-fmt" onclick="copyPanel('note')">Markdownコピー</button>
+      </div>
+    </div>
+
+    <!-- YouTube -->
+    <div class="fmt-panel" id="panel-yt">
+      <div class="empty" id="yt-empty">コンテンツを生成してください</div>
+      <div id="yt-content" style="display:none">
+        <div class="yt-notice">⚠️ YouTube Data APIによる自動アップロードは対象外です。台本・説明文を手動でアップロードしてください（判断②B確定）。</div>
+        <div style="margin-bottom:8px">
+          <strong style="font-size:12px">タイトル:</strong>
+          <div class="md-preview" id="ytTitle" style="max-height:60px;margin-top:4px"></div>
+        </div>
+        <div style="margin-bottom:8px">
+          <strong style="font-size:12px">説明文:</strong>
+          <div class="md-preview" id="ytDesc" style="max-height:120px;margin-top:4px"></div>
+        </div>
+        <div>
+          <strong style="font-size:12px">台本:</strong>
+          <div class="md-preview" id="ytScript" style="max-height:250px;margin-top:4px"></div>
+        </div>
+        <button class="btn-copy-fmt" onclick="copyPanel('yt')">台本コピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下部: スケジュール -->
+  <div class="section-bot">
+    <h2>⏰ 配信スケジュール（Cloud Functions — 朝8:00 / 夜19:00 JST）</h2>
+    <div class="sched-grid">
+      <div class="sched-card">
+        <div class="sc-time">08:00</div>
+        <div class="sc-label">朝配信（Professional トーン）</div>
+        <div class="sc-status status-ok" id="mornStatus">✅ スケジュール設定済み（G3実装時にCloud Functions起動）</div>
+      </div>
+      <div class="sched-card">
+        <div class="sc-time">19:00</div>
+        <div class="sc-label">夜配信（Casual トーン）</div>
+        <div class="sc-status status-ok" id="eveStatus">✅ スケジュール設定済み（G3実装時にCloud Functions起動）</div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;margin-top:10px">
+      MVP: テンプレートベース（GCPコスト¥0）/ G3: Claude APIによる品質向上（月額¥2,250〜¥4,500想定）
+    </p>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+let generatedContent = null;
+let currentTone = 'professional';
+let currentFmt = 'x';
+
+const X_CHAR_LIMIT = 140;
+
+function setTone(tone, el) {
+  currentTone = tone;
+  document.getElementById('toneVal').value = tone;
+  document.querySelectorAll('.tone-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function switchFmt(fmt) {
+  currentFmt = fmt;
+  document.querySelectorAll('.fmt-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.fmt-panel').forEach(p => p.classList.remove('active'));
+  const tabs = ['x','nl','note','yt'];
+  document.querySelectorAll('.fmt-tab')[tabs.indexOf(fmt)].classList.add('active');
+  document.getElementById('panel-' + fmt).classList.add('active');
+}
+
+function mockHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function generateX(topic, category, trendScore) {
+  const emoji = trendScore > 0.7 ? '🚀' : trendScore > 0.4 ? '📊' : '💡';
+  const body = `${emoji}【${category}】${topic}の最新動向をご紹介。NiceEzeが厳選した情報をお届けします。`;
+  const hashtags = [
+    category.replace(/・/g, '').replace(/ /g, ''),
+    'NiceEze', 'EC',
+    topic.split('　')[0].slice(0, 10).replace(/ /g, ''),
+  ].filter(Boolean).slice(0, 4);
+  const post = body.slice(0, 100);
+  const tagsStr = hashtags.map(t => '#' + t).join(' ');
+  const full = (post + '\n' + tagsStr).slice(0, X_CHAR_LIMIT);
+  return { post, hashtags, full, charCount: full.length };
+}
+
+function generateNewsletter(topic, category, trendScore) {
+  const subject = `【NiceEze】${category}トレンド速報 | ${topic}`;
+  const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '年').replace(/(\d+)年(\d+)$/, '$1年$2月') + '日';
+  const pctStr = Math.round(trendScore * 100) + '%';
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${subject}</title></head>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#1e293b;">
+  <div style="background:#1a3a5c;padding:20px;border-radius:8px 8px 0 0;">
+    <h1 style="color:white;font-size:18px;margin:0;">NiceEze マーケティングレポート</h1>
+    <p style="color:#bfd7ed;font-size:12px;margin:4px 0 0;">${today}</p>
+  </div>
+  <div style="background:#f0f4f8;padding:20px;border-radius:0 0 8px 8px;">
+    <h2 style="color:#1a3a5c;font-size:16px;">📊 ${category}トレンド: ${topic}</h2>
+    <p>トレンドスコア: <strong style="color:#f5a623;">${pctStr}</strong></p>
+    <p>本週の${category}分野では、<strong>${topic}</strong>に関する動向が注目されています。</p>
+    <hr style="border:1px solid #cbd5e1;">
+    <h3 style="color:#1a3a5c;">今週のポイント</h3>
+    <ul>
+      <li>${topic}に関連する需要が高まっています</li>
+      <li>競合他社の動向を継続的にモニタリング中</li>
+      <li>仕入れタイミングの最適化をご検討ください</li>
+    </ul>
+    <div style="background:#1a3a5c;padding:15px;border-radius:6px;margin-top:20px;">
+      <p style="color:white;font-size:12px;margin:0;">
+        © 2026 株式会社NiceEze | 配信停止はこちら<br>
+        本メールはNiceEze自律マーケティングシステムが自動生成しました。
+      </p>
+    </div>
+  </div>
+</body></html>`;
+  return { subject, html };
+}
+
+function generateNote(topic, category, trendScore) {
+  const level = trendScore > 0.7 ? '急成長中' : trendScore > 0.4 ? '注目中' : '定点観測中';
+  const today = new Date().toLocaleDateString('ja-JP');
+  return `# ${category}トレンド分析: ${topic}
+
+**カテゴリ**: ${category}
+**トレンドレベル**: ${level}（スコア: ${Math.round(trendScore * 100)}%）
+**公開日**: ${today}
+
+---
+
+## はじめに
+
+${topic}について、NiceEzeのリサーチシステム（RES-A01/A02）が分析したデータをもとに解説します。
+
+## 現在の市場動向
+
+${category}分野において、${topic}は現在**${level}**のステータスにあります。
+
+## データから見るポイント
+
+- **トレンドスコア**: ${Math.round(trendScore * 100)}%（NiceEze独自指標）
+- **分析期間**: 直近30日間のデータを基に算出
+- **対象カテゴリ**: ${category}
+
+## まとめ
+
+${topic}に関するトレンドを継続的にモニタリングし、最適なタイミングでの意思決定をサポートします。
+
+---
+
+*本記事はNiceEze自律マーケティングシステムが生成しました。*
+*※ note.com への投稿は手動で行ってください（自動投稿はG4以降対応予定）*
+`;
+}
+
+function generateYouTube(topic, category, trendScore) {
+  const ym = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
+  const title = `【${category}】${topic} — NiceEzeトレンド分析${ym}`;
+  const pctStr = Math.round(trendScore * 100) + '%';
+  const description = `${topic}に関する最新トレンドをNiceEzeが分析・解説します。
+
+📊 本動画の内容:
+- ${category}の最新市場動向
+- トレンドスコア分析（NiceEze独自指標）
+- 仕入れ・マーケティングへの活用方法
+
+🔔 チャンネル登録で最新情報をお届け！
+
+#NiceEze #${category.replace(/・/g, '')} #${topic.split('　')[0].slice(0, 15)}
+
+© 2026 株式会社NiceEze
+※ 本動画はNiceEze自律マーケティングシステムが台本を自動生成しました。アップロードは手動で行ってください。`;
+  const today = new Date().toISOString().slice(0, 10);
+  const script = `【YouTube台本】${title}
+作成日: ${today}
+※ このファイルはNiceEze自律マーケティングシステムが自動生成した台本です。
+※ YouTube Data APIによる自動アップロードは対象外（手動アップロード）です。
+
+---
+
+【オープニング: 0:00〜0:30】
+「こんにちは、NiceEzeです。今日は${category}の最新トレンド、特に${topic}について詳しく解説していきます。」
+「このチャンネルでは、EC・物流・マーケティングに役立つデータ分析をお届けしています。チャンネル登録がまだの方はぜひよろしくお願いします。」
+
+---
+
+【本編1: トレンド概況 0:30〜2:00】
+「まず、現在の${category}市場の概況からお伝えします。」
+「NiceEzeの独自指標によると、${topic}のトレンドスコアは現在${pctStr}を記録しています。」
+
+---
+
+【本編2: データ分析 2:00〜4:00】
+「次に、具体的なデータを見ていきましょう。」
+「直近30日間のランキングデータと検索ボリュームを分析したところ——」
+「（グラフ・図表を挿入してください）」
+
+---
+
+【本編3: 活用方法 4:00〜5:30】
+「では、このデータをどう活用すればよいでしょうか。」
+「1つ目は、仕入れタイミングの最適化です。」
+「2つ目は、マーケティングコンテンツへの活用です。」
+「3つ目は、競合他社との差別化です。」
+
+---
+
+【クロージング: 5:30〜6:00】
+「今日は${topic}のトレンド分析をお届けしました。」
+「チャンネル登録・高評価をよろしくお願いします。次回もお楽しみに！」`;
+  return { title, description, script };
+}
+
+function generate() {
+  const topic = document.getElementById('topicInput').value.trim();
+  const category = document.getElementById('catSelect').value;
+  const trendScore = parseFloat(document.getElementById('trendScore').value) || 0.5;
+  if (!topic) { alert('テーマ・キーワードを入力してください'); return; }
+
+  generatedContent = {
+    x: generateX(topic, category, trendScore),
+    nl: generateNewsletter(topic, category, trendScore),
+    note: generateNote(topic, category, trendScore),
+    yt: generateYouTube(topic, category, trendScore),
+  };
+
+  // X
+  document.getElementById('x-empty').style.display = 'none';
+  document.getElementById('x-content').style.display = 'block';
+  document.getElementById('xPostBox').textContent = generatedContent.x.full;
+  const cc = document.getElementById('xCharCount');
+  cc.textContent = generatedContent.x.charCount;
+  cc.className = 'char-count' + (generatedContent.x.charCount > X_CHAR_LIMIT ? ' char-over' : '');
+  document.getElementById('xHashtags').innerHTML = generatedContent.x.hashtags.map(h => `<span class="hashtag-chip">#${h}</span>`).join('');
+
+  // メルマガ
+  document.getElementById('nl-empty').style.display = 'none';
+  document.getElementById('nl-content').style.display = 'block';
+  document.getElementById('nlSubject').textContent = '件名: ' + generatedContent.nl.subject;
+  const iframe = document.getElementById('nlIframe');
+  iframe.srcdoc = generatedContent.nl.html;
+
+  // Note
+  document.getElementById('note-empty').style.display = 'none';
+  document.getElementById('note-content').style.display = 'block';
+  document.getElementById('noteMd').textContent = generatedContent.note;
+
+  // YouTube
+  document.getElementById('yt-empty').style.display = 'none';
+  document.getElementById('yt-content').style.display = 'block';
+  document.getElementById('ytTitle').textContent = generatedContent.yt.title;
+  document.getElementById('ytDesc').textContent = generatedContent.yt.description;
+  document.getElementById('ytScript').textContent = generatedContent.yt.script;
+}
+
+function copyPanel(fmt) {
+  if (!generatedContent) return;
+  let text = '';
+  if (fmt === 'x')    text = generatedContent.x.full;
+  if (fmt === 'nl')   text = generatedContent.nl.html;
+  if (fmt === 'note') text = generatedContent.note;
+  if (fmt === 'yt')   text = generatedContent.yt.script;
+  navigator.clipboard.writeText(text).then(() => alert('コピーしました！'));
+}
+
+document.getElementById('topicInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+</script>
+</body>
+</html>
