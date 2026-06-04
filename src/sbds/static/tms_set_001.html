@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMS-SET-001 | 初期設定・マスタ管理</title>
+  <style>
+    /* ── リセット & ベース ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    /* ── レイアウト（LAYOUT_MASTER TMS-SET-001準拠 固定3ゾーン） ── */
+    #app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; gap: 0; }
+
+    /* 上部: 建物基本スペック入力エリア */
+    #zone-top {
+      background: #1e293b;
+      border-bottom: 2px solid #334155;
+      padding: 16px 24px;
+    }
+    #zone-top h1 { font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .spec-field label { display: block; font-size: 11px; color: #64748b; margin-bottom: 4px; }
+    .spec-field input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      color: #e2e8f0;
+      padding: 6px 8px;
+      font-family: ui-monospace, monospace; /* font-mono */
+      font-variant-numeric: tabular-nums;   /* tabular-nums */
+      letter-spacing: -0.02em;              /* tracking-tight */
+      font-size: 14px;
+    }
+    .spec-field input:focus { outline: none; border-color: #3b82f6; }
+    .spec-field input.invalid { border-color: #ef4444; }
+
+    /* 中央: フロアグリッドエディタ */
+    #zone-mid {
+      overflow: auto;
+      padding: 16px 24px;
+      position: relative;
+    }
+    #zone-mid-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    #zone-mid-header h2 { font-size: 13px; color: #94a3b8; }
+    .btn-group { display: flex; gap: 8px; }
+    .btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      color: #e2e8f0;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 5px 12px;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #334155; }
+    .btn-primary { background: #1d4ed8; border-color: #2563eb; }
+    .btn-primary:hover { background: #2563eb; }
+
+    /* グリッドテーブル */
+    #floor-grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #floor-grid thead th {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-size: 11px;
+      padding: 8px 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    #floor-grid tbody td {
+      border: 1px solid #1e293b;
+      padding: 4px;
+    }
+    #floor-grid tbody tr:hover td { background: #1e293b; }
+    #floor-grid input[type="text"],
+    #floor-grid input[type="number"] {
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      font-family: ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      font-size: 13px;
+      padding: 4px 6px;
+      width: 100%;
+    }
+    #floor-grid input:focus { outline: 1px solid #3b82f6; border-radius: 2px; }
+
+    /* 削除ボタン列 */
+    .btn-del {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+    }
+
+    /* 下部: 保存 / リセットボタン */
+    #zone-btm {
+      background: #1e293b;
+      border-top: 2px solid #334155;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      padding: 12px 24px;
+    }
+    .btn-save { background: #059669; border-color: #10b981; font-size: 14px; padding: 8px 24px; }
+    .btn-save:hover { background: #10b981; }
+    .btn-reset { background: #7f1d1d; border-color: #dc2626; font-size: 14px; padding: 8px 24px; }
+    .btn-reset:hover { background: #dc2626; }
+
+    /* ステータスバー */
+    #status-bar { font-size: 11px; color: #64748b; align-self: center; flex: 1; }
+    #status-bar.ok { color: #10b981; }
+    #status-bar.err { color: #ef4444; }
+
+    /* Toast通知 */
+    #toast {
+      position: fixed;
+      bottom: 80px;
+      right: 24px;
+      background: #059669;
+      border-radius: 6px;
+      color: #fff;
+      display: none;
+      font-size: 13px;
+      padding: 10px 16px;
+      z-index: 100;
+    }
+    #toast.show { display: block; animation: fadeInOut 2.5s ease forwards; }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(8px); }
+      15% { opacity: 1; transform: translateY(0); }
+      75% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 上部: 建物基本スペック -->
+  <section id="zone-top">
+    <h1>TMS-SET-001 — 初期設定・マスタ管理</h1>
+    <div class="spec-grid">
+      <div class="spec-field">
+        <label>棟数 (1-20)</label>
+        <input type="number" id="building-count" min="1" max="20" value="1" inputmode="numeric">
+      </div>
+      <div class="spec-field">
+        <label>階数 (1-100)</label>
+        <input type="number" id="floor-count" min="1" max="100" value="10" inputmode="numeric">
+      </div>
+      <div class="spec-field">
+        <label>居住者用EV基数 (0-20)</label>
+        <input type="number" id="ev-residential" min="0" max="20" value="2" inputmode="numeric">
+      </div>
+      <div class="spec-field">
+        <label>業務用EV基数 (最低4基)</label>
+        <input type="number" id="ev-service" min="4" value="4" inputmode="numeric">
+      </div>
+    </div>
+  </section>
+
+  <!-- 中央: フロアグリッドエディタ -->
+  <section id="zone-mid">
+    <div id="zone-mid-header">
+      <h2>フロアスプレッドシート型グリッドエディタ</h2>
+      <div class="btn-group">
+        <button class="btn" onclick="importCAD()">CAD/DXFインポート</button>
+        <button class="btn" onclick="launchAR()">AR計測起動</button>
+        <button class="btn btn-primary" onclick="addRow()">+ 行追加</button>
+      </div>
+    </div>
+    <table id="floor-grid">
+      <thead>
+        <tr>
+          <th>棟名</th>
+          <th>部屋番号</th>
+          <th>専有面積(㎡)</th>
+          <th>家賃(円)</th>
+          <th>EV出口距離(m)</th>
+          <th>階</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="grid-body"></tbody>
+    </table>
+  </section>
+
+  <!-- 下部: 保存 / リセット -->
+  <section id="zone-btm">
+    <div id="status-bar">未保存の変更があります</div>
+    <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+    <button class="btn btn-save" onclick="saveToIndexedDB()">保存</button>
+  </section>
+</div>
+
+<div id="toast">保存しました ✓</div>
+
+<script>
+// ── IndexedDB v142 (niceeze_cache_v142) ──────────────────────────
+const IDB_NAME = 'niceeze_cache_v142';
+const IDB_VERSION = 142;
+const STORE_MASTERS = 'building_masters';
+
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_MASTERS)) {
+        d.createObjectStore(STORE_MASTERS, { keyPath: 'property_id' });
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function idbPut(storeName, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(data).onsuccess = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function idbGet(storeName, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+// ── グリッド操作 ──────────────────────────────────────────────────
+let rowId = 0;
+
+function addRow(data = {}) {
+  const tbody = document.getElementById('grid-body');
+  const id = ++rowId;
+  const tr = document.createElement('tr');
+  tr.dataset.rowId = id;
+  tr.innerHTML = `
+    <td><input type="text" placeholder="A棟" value="${data.building_name || ''}"></td>
+    <td><input type="text" placeholder="0101" value="${data.room_number || ''}"></td>
+    <td><input type="number" placeholder="25.00" step="0.01" min="0" value="${data.area_sqm || ''}"></td>
+    <td><input type="number" placeholder="80000" step="1" min="0" value="${data.rent_jpy || ''}"></td>
+    <td><input type="number" placeholder="15.0" step="0.1" min="0" value="${data.ev_exit_distance_m || ''}"></td>
+    <td><input type="number" placeholder="1" step="1" min="1" value="${data.floor || ''}"></td>
+    <td><button class="btn-del" onclick="deleteRow(${id})">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  setStatus('未保存の変更があります', '');
+}
+
+function deleteRow(id) {
+  const tr = document.querySelector(`tr[data-row-id="${id}"]`);
+  if (tr) tr.remove();
+  setStatus('未保存の変更があります', '');
+}
+
+function collectRows() {
+  const rows = [];
+  document.querySelectorAll('#grid-body tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('input');
+    rows.push({
+      building_name: inputs[0].value.trim(),
+      room_number: inputs[1].value.trim(),
+      area_sqm: parseFloat(inputs[2].value) || 0,
+      rent_jpy: parseInt(inputs[3].value, 10) || 0,
+      ev_exit_distance_m: parseFloat(inputs[4].value) || 0,
+      floor: parseInt(inputs[5].value, 10) || 1,
+    });
+  });
+  return rows;
+}
+
+// ── バリデーション ──────────────────────────────────────────────
+function validateSpec() {
+  const bc = parseInt(document.getElementById('building-count').value, 10);
+  const fc = parseInt(document.getElementById('floor-count').value, 10);
+  const evR = parseInt(document.getElementById('ev-residential').value, 10);
+  const evS = parseInt(document.getElementById('ev-service').value, 10);
+  const errors = [];
+  if (bc < 1 || bc > 20) errors.push('棟数は1-20');
+  if (fc < 1 || fc > 100) errors.push('階数は1-100');
+  if (evR < 0 || evR > 20) errors.push('居住者用EVは0-20基');
+  if (evS < 4) errors.push('業務用EVは4基以上必須');
+  return errors;
+}
+
+// ── 保存 ─────────────────────────────────────────────────────────
+async function saveToIndexedDB() {
+  const specErrors = validateSpec();
+  if (specErrors.length) {
+    setStatus('入力エラー: ' + specErrors.join(' / '), 'err');
+    return;
+  }
+
+  const master = {
+    property_id: 'default',
+    spec: {
+      building_count: parseInt(document.getElementById('building-count').value, 10),
+      floor_count: parseInt(document.getElementById('floor-count').value, 10),
+      ev_residential: parseInt(document.getElementById('ev-residential').value, 10),
+      ev_service: parseInt(document.getElementById('ev-service').value, 10),
+    },
+    rooms: collectRows(),
+    updated_at: new Date().toISOString(),
+    _idb_version: IDB_VERSION,
+  };
+
+  try {
+    await idbPut(STORE_MASTERS, master);
+    showToast();
+    setStatus(`保存完了 — ${master.rooms.length}部屋 / ${new Date().toLocaleTimeString('ja-JP')}`, 'ok');
+  } catch (err) {
+    setStatus('保存失敗: ' + err.message, 'err');
+  }
+}
+
+// ── 読み込み ──────────────────────────────────────────────────────
+async function loadFromIndexedDB() {
+  try {
+    const master = await idbGet(STORE_MASTERS, 'default');
+    if (!master) return;
+
+    document.getElementById('building-count').value = master.spec.building_count || 1;
+    document.getElementById('floor-count').value = master.spec.floor_count || 10;
+    document.getElementById('ev-residential').value = master.spec.ev_residential || 2;
+    document.getElementById('ev-service').value = master.spec.ev_service || 4;
+
+    document.getElementById('grid-body').innerHTML = '';
+    rowId = 0;
+    (master.rooms || []).forEach(r => addRow(r));
+    setStatus(`読み込み完了 — ${master.rooms.length}部屋`, 'ok');
+  } catch (err) {
+    setStatus('読み込みエラー: ' + err.message, 'err');
+  }
+}
+
+// ── リセット ──────────────────────────────────────────────────────
+function resetAll() {
+  if (!confirm('全データをリセットしますか？')) return;
+  document.getElementById('building-count').value = 1;
+  document.getElementById('floor-count').value = 10;
+  document.getElementById('ev-residential').value = 2;
+  document.getElementById('ev-service').value = 4;
+  document.getElementById('grid-body').innerHTML = '';
+  rowId = 0;
+  setStatus('リセットしました', '');
+}
+
+// ── CAD/AR（スタブ） ──────────────────────────────────────────────
+function importCAD() {
+  alert('CAD/DXFインポート機能はG1実装予定です（松浦CEO要件定義待ち）');
+}
+function launchAR() {
+  alert('AR計測機能はG1実装予定です（松浦CEO要件定義待ち）');
+}
+
+// ── ユーティリティ ────────────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = type;
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.className = 'show';
+  setTimeout(() => { t.className = ''; }, 2600);
+}
+
+// ── 初期化 ────────────────────────────────────────────────────────
+(async () => {
+  await openDB();
+  await loadFromIndexedDB();
+  if (document.getElementById('grid-body').children.length === 0) {
+    addRow({ building_name: 'A棟', room_number: '0101', area_sqm: 25, rent_jpy: 80000, ev_exit_distance_m: 15, floor: 1 });
+  }
+})();
+</script>
+</body>
+</html>
