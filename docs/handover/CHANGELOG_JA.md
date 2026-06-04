@@ -52,6 +52,35 @@
 
 ---
 
+## [G1-001] 2026-06-04 — SBDS初期実装（TMS-SET-001 / TMS-DRV-001）
+
+### 追加
+- `src/sbds/tms_set_001.py`: 建物マスタ・フロアグリッドエディタ バックエンド
+  - BuildingSpec / EVSpec / RoomRecord / BuildingMaster データモデル
+  - Firestore CRUD リポジトリ（BuildingMasterRepository）
+  - 最適ルーティング距離計算（calculate_routing_distance）
+- `src/sbds/tms_drv_001.py`: 配送員スマホ・ルーティングモジュール
+  - Jaro-Winkler名寄せエンジン（D_jw ≥ 0.85）
+  - **IndexedDB v142**（`niceeze_cache_v142` / IDB_VERSION=142）— v14.0の v140から移行
+  - **STATUS_LOCKED_BY_LABOR_LAW**（4時間連続作業ロック）
+  - 1分前PULL通知判定（should_send_pull_notify）
+  - 最適配送ルーティングソート（クレーム最後尾）
+- `src/sbds/static/tms_set_001.html`: TMS-SET-001 フロントエンド
+  - LAYOUT_MASTER.md 3ゾーン準拠（上部スペック入力/中央グリッド/下部保存）
+  - IndexedDB v142 保存・読み込み
+  - font-mono tabular-nums tracking-tight 強制
+- `src/sbds/static/tms_drv_001.html`: TMS-DRV-001 フロントエンド
+  - 冷凍/冷蔵警告（赤字大文字「ロッカー格納禁止：手渡し必須」）
+  - クレーム要注意フラグ（同フロア最後尾ソート）
+  - ETA残り時間リアルタイム表示（1秒更新）
+  - 労働法ロックバナー（4時間超で表示）
+  - **「佐藤」禁止事項違反 解消済** — 全箇所「配送スタッフ」に統一
+
+### 禁止事項対応
+- 🔴「佐藤」固有名詞: 差異レポートで検出 → 本実装では全箇所「配送スタッフ」に統一 ✅
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
