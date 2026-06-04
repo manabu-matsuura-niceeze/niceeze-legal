@@ -1,0 +1,118 @@
+name: Layout Guard
+
+on:
+  pull_request:
+    paths:
+      - 'src/**/*.html'
+      - 'src/**/*.css'
+      - 'src/**/*.js'
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - 'src/**/*.vue'
+
+jobs:
+  layout-guard:
+    name: Layout Guard — LAYOUT_MASTER.md整合性チェック
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check LAYOUT_MASTER.md exists
+        run: |
+          if [ ! -f "docs/ui/LAYOUT_MASTER.md" ]; then
+            echo "❌ LAYOUT_MASTER.md が存在しません。レイアウト正本を登録してください。"
+            exit 1
+          fi
+          echo "✅ LAYOUT_MASTER.md 確認済み"
+
+      - name: Detect UI changes
+        id: ui_diff
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^src/' | grep -E '\.(html|css|js|ts|tsx|vue)$' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "ui_changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ UIファイルの変更なし。チェックをスキップします。"
+          else
+            echo "ui_changed=true" >> $GITHUB_OUTPUT
+            echo "Changed UI files:"
+            echo "$CHANGED"
+          fi
+
+      - name: Check font-mono tabular-nums enforcement
+        if: steps.ui_diff.outputs.ui_changed == 'true'
+        run: |
+          # font-mono tabular-nums tracking-tight が削除されていないか確認
+          VIOLATIONS=""
+
+          # TMS-DRV-001: 配送総数・タイマー等の数値表示要素
+          for pattern in \
+            'id="totalCount"' \
+            'id="completedCount"' \
+            'id="countdown"' \
+            'id="arrivalTime"' \
+            'id="costPerUnit"' \
+            'id="grossMargin"' \
+            'id="lotDays"' \
+            'id="retentionScore"'
+          do
+            # patternに対応する要素でfont-monoが消えていないか確認
+            if grep -r "$pattern" src/ 2>/dev/null | grep -v "font-mono" | grep -v "tabular-nums" > /dev/null 2>&1; then
+              VIOLATIONS="$VIOLATIONS\n  - $pattern に font-mono tabular-nums が未適用"
+            fi
+          done
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "❌ Layout Guard 違反検出:"
+            echo -e "$VIOLATIONS"
+            echo ""
+            echo "LAYOUT_MASTER.md の '1-1. 等幅フォント強制適用箇所' を参照してください。"
+            echo "変更にはCEO承認 + LAYOUT_MASTER.md 先行更新が必要です。"
+            exit 1
+          fi
+          echo "✅ font-mono tabular-nums チェック通過"
+
+      - name: Check plan-locked class integrity
+        if: steps.ui_diff.outputs.ui_changed == 'true'
+        run: |
+          # NEG-SUP-001: plan-locked クラスが維持されているか
+          if grep -r 'plan-locked' src/ 2>/dev/null | grep -v 'opacity:0.45' > /dev/null 2>&1; then
+            # opacity:0.45 が消えていたら警告（エラーではなくWARN）
+            echo "⚠️ WARN: plan-locked クラスの opacity:0.45 定義を確認してください。"
+          else
+            echo "✅ plan-locked クラス チェック通過"
+          fi
+
+      - name: Require LAYOUT_MASTER.md update for layout changes
+        if: steps.ui_diff.outputs.ui_changed == 'true'
+        run: |
+          # LAYOUT_MASTER.md が今回のPRで更新されているか確認
+          MASTER_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep 'docs/ui/LAYOUT_MASTER.md' || true)
+
+          if [ -z "$MASTER_CHANGED" ]; then
+            echo "⚠️ WARNING: UIファイルが変更されましたが LAYOUT_MASTER.md が更新されていません。"
+            echo ""
+            echo "レイアウト変更を行う場合は:"
+            echo "  1. CEO（松浦 学）の明示的承認を取得"
+            echo "  2. docs/ui/LAYOUT_MASTER.md を先に更新"
+            echo "  3. 実装コードを変更"
+            echo ""
+            echo "軽微な機能追加（レイアウト変更なし）の場合はこのWARNINGを無視できます。"
+            echo "レイアウト変更の場合は LAYOUT_MASTER.md を更新してください。"
+            # WARNINGのみ（exitしない）
+          else
+            echo "✅ LAYOUT_MASTER.md も更新されています。"
+          fi
+
+      - name: Layout Guard Summary
+        if: always()
+        run: |
+          echo "=== Layout Guard Summary ==="
+          echo "対象ブランチ: ${{ github.head_ref }}"
+          echo "ベースブランチ: ${{ github.base_ref }}"
+          echo "レイアウト正本: docs/ui/LAYOUT_MASTER.md"
+          echo "根拠文書: Ver 14.2 要件定義書 第8章"
+          echo "GeminiのUI権限: 禁止（監査・スキャン・FinOps判定のみ）"
+          echo "==========================="
