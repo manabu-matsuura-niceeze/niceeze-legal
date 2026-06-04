@@ -81,6 +81,30 @@
 
 ---
 
+## [G0-004] 2026-06-04 — CEO確定判断5件反映 + TECH-20260604-002提出
+
+### 更新
+- `docs/reports/NiceEze_未実装5件_Gate別対応計画_20260604.md` Rev.2
+  - 判断①C: note.com → G4以降保留
+  - 判断②B: YouTube → 構成案・台本まで自動生成、アップロードは手動
+  - 判断④A: DWG対応 → 恒久的対象外（DXFのみ）
+  - 判断⑤A: AR精度 → ±50cm許容（WebXRで達成可能）
+  - 判断⑥A: PWAフォールバック → LIFF非対応時はPWA別URL + 導線設計をG1スコープに追加
+
+### 追加
+- `docs/reports/NiceEze_iOS_Android比較調査レポート_TECH-20260604-002.md`
+  - A案（Android優先）vs B案（iOS/Android同時）の詳細比較
+  - 技術的制約: Safari iOS WebXR / ARKit実装差分 / iOS15フォールバック工数
+  - Gate影響: A案=G1確実完了、B案=1〜2週間遅延リスク
+  - 自律COO推奨: **A案（Android優先）**
+  - 松浦CEO最終判断待ち（判断③）
+
+### Google Driveアップロード（00_NiceEze_AI_Audit）
+- `NiceEze_未実装5件_Gate別対応計画_20260604` Rev.2 更新
+- `NiceEze_iOS_Android比較調査レポート_TECH-20260604-002` 新規
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
