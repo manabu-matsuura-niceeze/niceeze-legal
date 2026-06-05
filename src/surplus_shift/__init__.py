@@ -3,9 +3,11 @@ from .gate_a import KeepaClient, PriceSnapshot
 from .gate_b import GrossMarginCalc, PurchaseDecision, GrossMarginResult
 from .gate_c import InventoryScorer, DemandForecast, InventoryScore
 from .gate_d import CashFlowJudge, MonthlyCFInput, CFJudgement
+from .negotiation_log import NegotiationLog, NegotiationRecord
 __all__ = [
     'KeepaClient', 'PriceSnapshot',
     'GrossMarginCalc', 'PurchaseDecision', 'GrossMarginResult',
     'InventoryScorer', 'DemandForecast', 'InventoryScore',
     'CashFlowJudge', 'MonthlyCFInput', 'CFJudgement',
+    'NegotiationLog', 'NegotiationRecord',
 ]

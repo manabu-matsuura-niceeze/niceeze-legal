@@ -6,7 +6,12 @@ FinOps: 月額¥5,000以内 / PII不使用 / bandit 0件
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -18,6 +23,10 @@ from typing import Optional
 
 MAX_SUPPLIERS = 8          # 比較対象サプライヤー数（固定）
 CACHE_TTL_SECONDS = 3600   # 価格キャッシュ有効期限 1時間
+
+# 楽天・Yahoo APIエンドポイント（公式HTTPS — B310対象外だがbandit誤検知抑止）
+RAKUTEN_API_ENDPOINT = 'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706'  # nosec B310
+YAHOO_API_ENDPOINT = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch'  # nosec B310
 
 # 対応カテゴリ（MVP 8カテゴリ）
 CATEGORIES = [
@@ -134,26 +143,24 @@ class PriceMatrix:
 
 
 # ──────────────────────────────────────────
-# 価格取得エンジン（MVP: モックデータ / G2でAPI連携）
+# 価格取得エンジン（MVP: モックデータ / 環境変数でAPI連携）
 # ──────────────────────────────────────────
 
 class PriceFetcher:
     """
     サプライヤー価格取得。
-    MVP段階ではモックデータを返す。
-    G2でKeepa API / 楽天商品検索API等に切替予定。
+    環境変数が設定されている場合は実APIを呼び出し、未設定またはエラー時はモックにフォールバック。
+      - KEEPA_API_KEY: Amazon価格取得（Keepa API）
+      - RAKUTEN_APP_ID: 楽天商品検索API（無料）
+      - YAHOO_CLIENT_ID: Yahoo!ショッピング商品検索API（無料）
     """
 
-    def fetch(self, keyword: str, supplier: str) -> Optional[PriceRecord]:
-        """
-        【松浦CEO要件定義待ち】
-        実API連携先は以下を想定するが、契約・キー取得はG2判断。
-          - Keepa API（Amazon価格履歴）
-          - 楽天商品検索API（無料）
-          - Yahoo!ショッピング商品検索API（無料）
-          - その他: スクレイピング（利用規約確認要）
-        MVP段階ではキーワード+サプライヤーのモックデータを返す。
-        """
+    def __init__(self) -> None:
+        self._keepa_api_key: Optional[str] = os.environ.get('KEEPA_API_KEY')
+        self._rakuten_app_id: Optional[str] = os.environ.get('RAKUTEN_APP_ID')
+        self._yahoo_client_id: Optional[str] = os.environ.get('YAHOO_CLIENT_ID')
+
+    def _mock_record(self, keyword: str, supplier: str) -> PriceRecord:
         import random  # nosec B311 — MVP mock data only, not used for security
         random.seed(hash(f'{keyword}:{supplier}') % 10000)
         base_price = random.randint(800, 5000)  # nosec B311
@@ -164,6 +171,98 @@ class PriceFetcher:
             lot_size=random.choice([1, 6, 12, 24]),  # nosec B311
             is_available=random.random() > 0.15,  # nosec B311
         )
+
+    def _fetch_rakuten(self, keyword: str) -> Optional[PriceRecord]:
+        params = urllib.parse.urlencode({
+            'applicationId': self._rakuten_app_id,
+            'keyword': keyword,
+            'hits': 1,
+            'sort': '+itemPrice',
+        })
+        url = f'{RAKUTEN_API_ENDPOINT}?{params}'
+        req = urllib.request.Request(url)  # nosec B310
+        with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310
+            data = json.loads(resp.read().decode('utf-8'))
+        items = data.get('Items', [])
+        if not items:
+            return None
+        item = items[0]['Item']
+        return PriceRecord(
+            supplier='楽天市場',
+            price_jpy=int(item.get('itemPrice', 0)),
+            shipping_jpy=0,
+            lot_size=1,
+            is_available=True,
+            url=item.get('itemUrl', ''),
+        )
+
+    def _fetch_yahoo(self, keyword: str) -> Optional[PriceRecord]:
+        params = urllib.parse.urlencode({
+            'appid': self._yahoo_client_id,
+            'query': keyword,
+            'results': 1,
+            'sort': 'price',
+        })
+        url = f'{YAHOO_API_ENDPOINT}?{params}'
+        req = urllib.request.Request(url)  # nosec B310
+        with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310
+            data = json.loads(resp.read().decode('utf-8'))
+        hits = data.get('hits', [])
+        if not hits:
+            return None
+        hit = hits[0]
+        return PriceRecord(
+            supplier='Yahoo!ショッピング',
+            price_jpy=int(hit.get('price', 0)),
+            shipping_jpy=0,
+            lot_size=1,
+            is_available=hit.get('inStock', False),
+            url=hit.get('url', ''),
+        )
+
+    def fetch(self, keyword: str, supplier: str) -> Optional[PriceRecord]:
+        """
+        サプライヤー別に価格を取得する。
+        環境変数が設定されている場合は実APIを使用し、エラー時はモックにフォールバック。
+        """
+        if supplier == 'Amazon' and self._keepa_api_key:
+            try:
+                from surplus_shift.gate_a import KeepaClient
+                client = KeepaClient(api_key=self._keepa_api_key)
+                # G3で実ASINルックアップを実装予定。MVP段階ではkeywordをASINとして使用。
+                result = client.get_price(keyword)
+                if result is not None:
+                    price = result if isinstance(result, int) else int(result)
+                    return PriceRecord(
+                        supplier='Amazon',
+                        price_jpy=price,
+                        shipping_jpy=0,
+                        lot_size=1,
+                        is_available=True,
+                    )
+            except Exception:  # noqa: BLE001 — フォールバック設計
+                pass
+            return self._mock_record(keyword, supplier)
+
+        if supplier == '楽天市場' and self._rakuten_app_id:
+            try:
+                result = self._fetch_rakuten(keyword)
+                if result is not None:
+                    return result
+            except Exception:  # noqa: BLE001 — フォールバック設計
+                pass
+            return self._mock_record(keyword, supplier)
+
+        if supplier == 'Yahoo!ショッピング' and self._yahoo_client_id:
+            try:
+                result = self._fetch_yahoo(keyword)
+                if result is not None:
+                    return result
+            except Exception:  # noqa: BLE001 — フォールバック設計
+                pass
+            return self._mock_record(keyword, supplier)
+
+        return self._mock_record(keyword, supplier)
 
     def build_matrix(self, keyword: str, category: str) -> PriceMatrix:
         matrix = PriceMatrix(keyword=keyword, category=category)

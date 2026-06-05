@@ -314,5 +314,71 @@ class TestGateD(unittest.TestCase):
         self.assertFalse(result.procurement_feasible)
 
 
+class TestNegotiationLog(unittest.TestCase):
+    def setUp(self):
+        from src.surplus_shift.negotiation_log import NegotiationLog, STATUS_DRAFT, STATUS_HUMAN_APPROVED, STATUS_SENT, STATUS_REJECTED
+        self.log = NegotiationLog()
+        self.STATUS_DRAFT = STATUS_DRAFT
+        self.STATUS_HUMAN_APPROVED = STATUS_HUMAN_APPROVED
+        self.STATUS_SENT = STATUS_SENT
+        self.STATUS_REJECTED = STATUS_REJECTED
+
+    def test_add_draft_returns_record(self):
+        rec = self.log.add_draft('2026-06', '交渉案テキスト')
+        self.assertEqual(rec.status, self.STATUS_DRAFT)
+
+    def test_draft_id_is_64_char_sha256(self):
+        rec = self.log.add_draft('2026-06', '交渉案テキスト')
+        self.assertEqual(len(rec.record_id), 64)
+
+    def test_human_approve_changes_status(self):
+        rec = self.log.add_draft('2026-06', '交渉案')
+        approved = self.log.human_approve(rec.record_id, '松浦CEO')
+        self.assertEqual(approved.status, self.STATUS_HUMAN_APPROVED)
+        self.assertEqual(approved.human_approved_by, '松浦CEO')
+
+    def test_mark_sent_requires_human_approval(self):
+        rec = self.log.add_draft('2026-06', '交渉案')
+        with self.assertRaises(ValueError):
+            self.log.mark_sent(rec.record_id)
+
+    def test_mark_sent_after_approve(self):
+        rec = self.log.add_draft('2026-06', '交渉案')
+        self.log.human_approve(rec.record_id, '松浦CEO')
+        sent = self.log.mark_sent(rec.record_id)
+        self.assertEqual(sent.status, self.STATUS_SENT)
+
+    def test_reject_changes_status(self):
+        rec = self.log.add_draft('2026-06', '交渉案')
+        rejected = self.log.reject(rec.record_id, '内容修正必要')
+        self.assertEqual(rejected.status, self.STATUS_REJECTED)
+
+    def test_get_by_status(self):
+        self.log.add_draft('2026-06', 'draft1')
+        rec2 = self.log.add_draft('2026-06', 'draft2')
+        self.log.human_approve(rec2.record_id, '松浦CEO')
+        self.assertEqual(len(self.log.get_by_status(self.STATUS_DRAFT)), 1)
+        self.assertEqual(len(self.log.get_by_status(self.STATUS_HUMAN_APPROVED)), 1)
+
+    def test_get_by_month(self):
+        self.log.add_draft('2026-06', 'draft1')
+        self.log.add_draft('2026-07', 'draft2')
+        self.assertEqual(len(self.log.get_by_month('2026-06')), 1)
+
+    def test_summary_has_required_keys(self):
+        s = self.log.summary()
+        for k in ('total', 'draft', 'human_approved', 'sent', 'rejected', 'human_approval_required'):
+            self.assertIn(k, s)
+
+    def test_summary_human_approval_required_always_true(self):
+        s = self.log.summary()
+        self.assertTrue(s['human_approval_required'])
+
+    def test_to_dict_has_human_approval_required(self):
+        rec = self.log.add_draft('2026-06', '交渉案')
+        d = rec.to_dict()
+        self.assertTrue(d['human_approval_required'])
+
+
 if __name__ == '__main__':
     unittest.main()
