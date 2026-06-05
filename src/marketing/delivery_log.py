@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -128,7 +128,6 @@ class DeliveryLog:
         for r in self.records:
             try:
                 dt = datetime.fromisoformat(r.delivered_at)
-                # Ensure tz-aware for comparison
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=timezone.utc)
                 if dt >= cutoff:

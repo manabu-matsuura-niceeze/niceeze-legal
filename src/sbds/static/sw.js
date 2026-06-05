@@ -7,61 +7,64 @@ const PRECACHE_URLS = [
   'manifest.json'
 ];
 
-// Install: precache listed assets
-self.addEventListener('install', event => {
+// Install: pre-cache listed files
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
   );
+  // Activate immediately without waiting for old clients to close
   self.skipWaiting();
 });
 
-// Activate: remove old caches
-self.addEventListener('activate', event => {
+// Activate: delete any caches that are not the current cache name
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames =>
+    caches.keys().then((cacheNames) =>
       Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
       )
     )
   );
+  // Take control of all clients immediately
   self.clients.claim();
 });
 
-// Fetch: cache-first, fall back to network and update cache
-self.addEventListener('fetch', event => {
+// Fetch: cache-first strategy — serve from cache, fall back to network and update cache
+self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.open(CACHE_NAME).then(async cache => {
+    caches.open(CACHE_NAME).then(async (cache) => {
       const cached = await cache.match(event.request);
       if (cached) {
-        // Serve from cache, then update cache in background
+        // Return cached response, refresh cache in background
         event.waitUntil(
           fetch(event.request)
-            .then(networkResponse => {
-              if (networkResponse && networkResponse.status === 200) {
+            .then((networkResponse) => {
+              if (networkResponse && networkResponse.ok) {
                 cache.put(event.request, networkResponse.clone());
               }
             })
-            .catch(() => { /* network unavailable, that's OK */ })
+            .catch(() => { /* network unavailable — cached version is fine */ })
         );
         return cached;
       }
-      // Not in cache: fetch from network and cache it
+
+      // Not in cache — fetch from network and cache the response
       try {
         const networkResponse = await fetch(event.request);
-        if (networkResponse && networkResponse.status === 200) {
+        if (networkResponse && networkResponse.ok) {
           cache.put(event.request, networkResponse.clone());
         }
         return networkResponse;
       } catch (err) {
-        // Network failed and no cache — nothing to return
+        // Network failed and no cache — nothing we can do
         return new Response('Offline — resource not cached.', {
           status: 503,
-          headers: { 'Content-Type': 'text/plain' }
+          statusText: 'Service Unavailable'
         });
       }
     })
