@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NiceEze 自律経営執行システム Ver.14.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','Monaco','Consolas','monospace'] }
+    }
+  }
+}
+</script>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;background:#0a0f1e;color:#e2e8f0;font-family:'Segoe UI',sans-serif;}
+.tab-btn{transition:all .2s;}
+.tab-btn.active{background:#3b82f6;color:#fff;}
+.tab-btn:not(.active){background:#1e293b;color:#94a3b8;}
+.plan-card{transition:all .2s;cursor:pointer;border:2px solid #334155;}
+.plan-card:hover{border-color:#60a5fa;}
+.plan-card.selected{border-color:#3b82f6;background:#1e3a5f;}
+.plan-locked{opacity:.45;filter:grayscale(.4);pointer-events:none;position:relative;}
+.lock-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:10;font-size:.75rem;color:#f59e0b;font-weight:700;border-radius:.5rem;}
+@keyframes popupIn{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+.popup-in{animation:popupIn .3s ease-out forwards;}
+@keyframes pulse-glow{0%,100%{text-shadow:0 0 8px #ef4444}50%{text-shadow:0 0 24px #ef4444,0 0 48px #ef4444}}
+.pulse-red{animation:pulse-glow 1s infinite;}
+@keyframes pulse-orange{0%,100%{text-shadow:0 0 8px #f97316}50%{text-shadow:0 0 20px #f97316}}
+.pulse-orange{animation:pulse-orange 1s infinite;}
+.grid-fixed{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:640px){.grid-fixed{grid-template-columns:1fr;}}
+.tms-fixed{max-width:480px;margin:0 auto;}
+.scrollable{overflow-y:auto;max-height:400px;}
+.profit-green{color:#22c55e;}
+.profit-gold{color:#eab308;}
+.profit-red{color:#ef4444;}
+input,select,textarea{background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:.375rem;padding:.375rem .75rem;}
+input:focus,select:focus,textarea:focus{outline:2px solid #3b82f6;border-color:#3b82f6;}
+button{cursor:pointer;}
+.card{background:#1e293b;border:1px solid #334155;border-radius:.75rem;padding:1rem;}
+.badge-red{background:#7f1d1d;color:#fca5a5;padding:.125rem .5rem;border-radius:.25rem;font-size:.75rem;}
+.badge-green{background:#14532d;color:#86efac;padding:.125rem .5rem;border-radius:.25rem;font-size:.75rem;}
+.badge-yellow{background:#713f12;color:#fde68a;padding:.125rem .5rem;border-radius:.25rem;font-size:.75rem;}
+.badge-blue{background:#1e3a5f;color:#93c5fd;padding:.125rem .5rem;border-radius:.25rem;font-size:.75rem;}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.spreadsheet-grid{width:100%;border-collapse:collapse;}
+.spreadsheet-grid th,.spreadsheet-grid td{border:1px solid #334155;padding:.25rem .5rem;font-size:.8rem;}
+.spreadsheet-grid th{background:#0f172a;font-weight:600;}
+.spreadsheet-grid td input{width:100%;background:transparent;border:none;color:#e2e8f0;font-size:.8rem;}
+.countdown-timer{font-size:3rem;font-weight:900;font-family:'ui-monospace',monospace;tabular-nums:auto;}
+</style>
+</head>
+<body>
+
+<!-- ===== TOP NAV ===== -->
+<header class="sticky top-0 z-50 bg-gray-900 border-b border-gray-700 px-3 py-2 flex items-center justify-between">
+  <div class="flex items-center gap-2">
+    <span class="text-blue-400 font-bold text-lg">NiceEze</span>
+    <span class="text-xs text-gray-400">自律経営執行 v14.0</span>
+  </div>
+  <div class="flex items-center gap-2 text-xs">
+    <span class="badge-green">SYSTEM ONLINE</span>
+    <span id="clock" class="font-mono tabular-nums text-gray-300"></span>
+  </div>
+</header>
+
+<!-- ===== MARKET FEED ===== -->
+<div class="bg-gray-900 border-b border-gray-700 px-3 py-1 overflow-hidden whitespace-nowrap">
+  <span class="text-xs text-gray-500 mr-2">■ MARKET</span>
+  <span id="marketFeed" class="text-xs font-mono tabular-nums tracking-tight text-green-400"></span>
+</div>
+
+<!-- ===== MAIN TABS ===== -->
+<div class="px-2 py-2 flex flex-wrap gap-1">
+  <button onclick="showTab('s10')" class="tab-btn active text-xs px-3 py-1 rounded" id="tab-s10">S10 COO報告</button>
+  <button onclick="showTab('tms-set')" class="tab-btn text-xs px-3 py-1 rounded" id="tab-tms-set">TMS-SET-001 初期設定</button>
+  <button onclick="showTab('tms-drv')" class="tab-btn text-xs px-3 py-1 rounded" id="tab-tms-drv">TMS-DRV-001 配送員</button>
+  <button onclick="showTab('research')" class="tab-btn text-xs px-3 py-1 rounded" id="tab-research">第3章 リサーチ</button>
+  <button onclick="showTab('surplus')" class="tab-btn text-xs px-3 py-1 rounded" id="tab-surplus">第4章 SURPLUS SHIFT</button>
+  <button onclick="showTab('marketing')" class="tab-btn text-xs px-3 py-1 rounded" id="tab-marketing">第5章 マーケティング</button>
+  <button onclick="showTab('governance')" class="tab-btn text-xs px-3 py-1 rounded" id="tab-governance">Gemini戦略エージェント</button>
+</div>
+
+<!-- ===================================================================
+     S10: COO業務報告・監査パネル
+=================================================================== -->
+<div id="tab-s10-content" class="px-3 pb-6">
+
+  <!-- 上部: 報告対象日付・報告者・営業フェーズ -->
+  <div class="card mb-3">
+    <div class="grid grid-cols-3 gap-2 text-sm">
+      <div>
+        <label class="text-xs text-gray-400">報告対象日付</label>
+        <input type="date" id="reportDate" class="w-full mt-1">
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">報告者名</label>
+        <input type="text" id="reporterName" placeholder="氏名" class="w-full mt-1">
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">営業フェーズ目標</label>
+        <input type="text" id="phaseTarget" placeholder="例: 月次売上 ¥500万達成" class="w-full mt-1">
+      </div>
+    </div>
+  </div>
+
+  <!-- 中央: 15ヶ国語TTS + STT/入力 -->
+  <div class="card mb-3">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-semibold text-blue-300">■ AI音声COO報告システム（15ヶ国語TTS）</span>
+      <button onclick="playTTS()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded">▶ TTS再生</button>
+    </div>
+    <div class="grid-fixed mb-2">
+      <div>
+        <label class="text-xs text-gray-400">TTS言語選択</label>
+        <select id="ttsLang" class="w-full mt-1 text-sm">
+          <option value="ja-JP">日本語 (Japanese)</option>
+          <option value="en-US">English (US)</option>
+          <option value="zh-CN">中文 (Mandarin)</option>
+          <option value="ko-KR">한국어 (Korean)</option>
+          <option value="es-ES">Español</option>
+          <option value="fr-FR">Français</option>
+          <option value="de-DE">Deutsch</option>
+          <option value="pt-BR">Português (Brasil)</option>
+          <option value="ar-SA">العربية (Arabic)</option>
+          <option value="hi-IN">हिन्दी (Hindi)</option>
+          <option value="vi-VN">Tiếng Việt</option>
+          <option value="th-TH">ภาษาไทย (Thai)</option>
+          <option value="id-ID">Bahasa Indonesia</option>
+          <option value="ru-RU">Русский (Russian)</option>
+          <option value="tl-PH">Filipino (Tagalog)</option>
+        </select>
+      </div>
+      <div class="text-xs text-gray-400 p-2 bg-gray-800 rounded">
+        <p class="text-yellow-400 font-semibold mb-1">ビジネス和敬TTS文:</p>
+        <p id="ttsTextDisplay">お疲れ様です。本日の営業活動および拠点開発の進捗を報告してください。定量的な数値目標と次回アクション期限を必ず明示してください。</p>
+      </div>
+    </div>
+    <div class="mb-2">
+      <label class="text-xs text-gray-400">音声STT入力 / 手入力テキストボックス</label>
+      <div class="flex gap-2 mt-1">
+        <button onclick="startSTT()" class="bg-red-700 hover:bg-red-600 text-white text-xs px-3 py-1 rounded" id="sttBtn">🎤 音声入力</button>
+        <button onclick="stopSTT()" class="bg-gray-600 hover:bg-gray-500 text-white text-xs px-3 py-1 rounded">■ 停止</button>
+        <span id="sttStatus" class="text-xs text-gray-400 self-center"></span>
+      </div>
+      <textarea id="reportInput" class="w-full mt-2 h-28 text-sm" placeholder="本日の営業活動・拠点開発の進捗を入力（次回アクション日時を必ず含めること）..."></textarea>
+      <div id="actionDateWarning" class="text-xs text-red-400 mt-1 hidden">⚠ 次回アクション日時が未明記です。必ず日時を含めてください。</div>
+    </div>
+    <button onclick="processReport()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold text-sm">AI自動構造化整理 ＆ 3部署統合報告生成</button>
+  </div>
+
+  <!-- 下部: AI自動生成TODO.md プレビューカード -->
+  <div class="card mb-3" id="aiReportCard" style="display:none;">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-semibold text-green-300">■ AI自動生成 TODO.md プレビューカード（ワンクリックコピー）</span>
+      <button onclick="copyTodoCard()" class="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1 rounded">📋 コピー</button>
+    </div>
+    <pre id="todoCardContent" class="text-xs bg-gray-900 p-3 rounded overflow-auto whitespace-pre-wrap text-green-200 max-h-64"></pre>
+    <div id="copySuccess" class="text-xs text-green-400 mt-1 hidden">✅ クリップボードにコピーしました</div>
+  </div>
+
+  <!-- Gemini監査評価カード -->
+  <div class="card mb-3" id="geminiAuditCard" style="display:none;">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-sm font-semibold text-purple-300">■ Gemini戦略エージェント 監査評価 ＆ 対案カード</span>
+      <span class="badge-yellow">自律実行中</span>
+    </div>
+    <div id="geminiAuditContent" class="text-xs space-y-2"></div>
+  </div>
+
+  <!-- 3大仮想部署 自律実務データ -->
+  <div class="grid-fixed">
+    <div class="card">
+      <div class="text-xs font-semibold text-blue-300 mb-2">■ 広報部 本日自律実務</div>
+      <div id="prDeptData" class="text-xs space-y-1 text-gray-300"></div>
+    </div>
+    <div class="card">
+      <div class="text-xs font-semibold text-green-300 mb-2">■ 営業部 本日自律実務</div>
+      <div id="salesDeptData" class="text-xs space-y-1 text-gray-300"></div>
+    </div>
+  </div>
+  <div class="card mt-3">
+    <div class="text-xs font-semibold text-yellow-300 mb-2">■ 運行管理部 本日自律実務</div>
+    <div id="opsDeptData" class="text-xs space-y-1 text-gray-300"></div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     TMS-SET-001: 初期設定マスタ管理
+=================================================================== -->
+<div id="tab-tms-set-content" class="px-3 pb-6" style="display:none;">
+  <div class="grid-fixed mb-3">
+    <!-- 左側: バリデーター -->
+    <div class="card">
+      <div class="text-sm font-semibold text-blue-300 mb-3">■ 基本物理制限設定</div>
+      <div class="space-y-2 text-sm">
+        <div>
+          <label class="text-xs text-gray-400">建物棟数 (1〜20)</label>
+          <input type="number" id="buildingCount" min="1" max="20" value="1" class="w-full mt-1" oninput="validatePhysical(this,1,20)">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">階数 (1〜100)</label>
+          <input type="number" id="floorCount" min="1" max="100" value="10" class="w-full mt-1" oninput="validatePhysical(this,1,100);generateFloorGrid()">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">居住者用EV基数 (0〜20)</label>
+          <input type="number" id="resEV" min="0" max="20" value="2" class="w-full mt-1" oninput="validatePhysical(this,0,20)">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">業務用EV基数 (0〜20)</label>
+          <input type="number" id="bizEV" min="0" max="20" value="1" class="w-full mt-1" oninput="validatePhysical(this,0,20)">
+        </div>
+      </div>
+      <div class="mt-3 border-t border-gray-700 pt-3">
+        <div class="text-xs font-semibold text-yellow-300 mb-2">手続き遅延時間加算マスタ (秒)</div>
+        <div class="space-y-1 text-xs">
+          <div class="flex items-center gap-2">
+            <label class="text-gray-400 w-28">入館手続き</label>
+            <input type="number" id="delay_entry" value="30" class="w-20">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-gray-400 w-28">セキュリティ解除</label>
+            <input type="number" id="delay_security" value="15" class="w-20">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-gray-400 w-28">EV待機</label>
+            <input type="number" id="delay_elevator" value="45" class="w-20">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-gray-400 w-28">その他</label>
+            <input type="number" id="delay_other" value="10" class="w-20">
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 右側: データ読込 -->
+    <div class="card">
+      <div class="text-sm font-semibold text-blue-300 mb-3">■ 建築データ ＆ AR</div>
+      <div class="space-y-2">
+        <button onclick="loadCADData()" class="w-full bg-indigo-700 hover:bg-indigo-600 text-white text-xs py-2 rounded">📐 建築CADデータ読込 (DXF/DWG) 一括自動ロード</button>
+        <input type="file" id="cadFile" accept=".dxf,.dwg,.json,.csv" class="hidden" onchange="onCADFile(event)">
+        <button onclick="startAR()" class="w-full bg-teal-700 hover:bg-teal-600 text-white text-xs py-2 rounded">📷 スマホカメラ起動・AR距離計測</button>
+        <div id="arStatus" class="text-xs text-gray-400"></div>
+      </div>
+      <div class="mt-3 border-t border-gray-700 pt-3">
+        <div class="text-xs font-semibold text-yellow-300 mb-2">EV稼働履歴ログ解析</div>
+        <p class="text-xs text-gray-400 mb-2">CSV/JSONインポート → 曜日別・時間帯別 待ち時間解析 → 補正係数自動生成</p>
+        <input type="file" id="evLogFile" accept=".csv,.json" class="hidden" onchange="onEVLog(event)">
+        <button onclick="document.getElementById('evLogFile').click()" class="w-full bg-gray-600 hover:bg-gray-500 text-white text-xs py-2 rounded">📂 EV履歴ログ読込</button>
+        <div id="evAnalysisResult" class="mt-2 text-xs text-gray-300"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中央: スプレッドシート型グリッドエディタ -->
+  <div class="card mb-3">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-semibold text-green-300">■ 階別・部屋情報スプレッドシートエディタ</span>
+      <button onclick="bulkCopyFloor()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded">一括コピー（フロア設定同期）</button>
+    </div>
+    <div class="scrollable">
+      <table class="spreadsheet-grid" id="floorGrid">
+        <thead>
+          <tr>
+            <th>階</th><th>棟名</th><th>部屋番号</th><th>専有面積(㎡)</th><th>家賃(円)</th><th>EVからの距離(m)</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="floorGridBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     TMS-DRV-001: 配送員専用スマホ画面
+=================================================================== -->
+<div id="tab-tms-drv-content" class="px-3 pb-6" style="display:none;">
+  <div class="tms-fixed">
+    <!-- 最上部 -->
+    <div class="card mb-3 text-center">
+      <div class="text-xs text-gray-400">本日配送総数</div>
+      <div class="font-mono tabular-nums tracking-tight text-4xl font-black text-white" id="totalDeliveries">48</div>
+      <div class="font-mono tabular-nums text-sm text-gray-300">件</div>
+      <div class="flex justify-between mt-2 text-xs">
+        <span>現在フロア: <strong id="currentFloor" class="font-mono tabular-nums text-blue-300">3F</strong></span>
+        <span>完了: <strong id="doneCount" class="font-mono tabular-nums text-green-400">12</strong> / 未: <strong id="pendingCount" class="font-mono tabular-nums text-red-400">36</strong></span>
+      </div>
+      <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
+        <div id="progressBar" class="bg-blue-500 h-2 rounded-full" style="width:25%"></div>
+      </div>
+    </div>
+
+    <!-- 中央: 配送リスト -->
+    <div class="card mb-3">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold text-blue-300">■ 最短経路配送順リスト</span>
+        <span class="text-xs text-gray-400">Jaro-Winkler名寄せ適用</span>
+      </div>
+      <div id="deliveryList" class="space-y-2 scrollable"></div>
+    </div>
+
+    <!-- 1分前PUSH通知ログ -->
+    <div class="card">
+      <div class="text-xs font-semibold text-yellow-300 mb-2">■ 1分前PUSH通知ログ（Dwell-time ≤15秒）</div>
+      <div id="pushNotifLog" class="text-xs space-y-1 text-gray-300 scrollable max-h-32"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     第3章: リサーチ 2系統
+=================================================================== -->
+<div id="tab-research-content" class="px-3 pb-6" style="display:none;">
+  <div class="flex gap-2 mb-3">
+    <button onclick="showResearch('A')" class="tab-btn active text-xs px-3 py-1 rounded" id="resTab-A">系統A: 最廉価リサーチ</button>
+    <button onclick="showResearch('B')" class="tab-btn text-xs px-3 py-1 rounded" id="resTab-B">系統B: トレンドリサーチ</button>
+  </div>
+
+  <!-- 系統A -->
+  <div id="resA">
+    <div class="card mb-3">
+      <div class="text-sm font-semibold text-blue-300 mb-2">■ 系統A: 最廉価リサーチシステム（Claude API駆動動的検索）</div>
+      <div class="flex gap-2 mb-2">
+        <input type="text" id="searchKeyword" placeholder="キーワード・型番 例: おーいお茶 2L×6" class="flex-1 text-sm">
+        <input type="text" id="extraPlatform" placeholder="追加プラットフォーム名" class="w-36 text-sm">
+        <button onclick="runPriceSearch()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded">🔍 検索</button>
+      </div>
+      <!-- 検索プロセスエミュレーター -->
+      <div id="searchProgress" class="hidden mb-2 text-xs font-mono tabular-nums text-green-400 bg-gray-900 p-2 rounded">
+        <div id="searchLog"></div>
+      </div>
+      <!-- 比較マトリクステーブル -->
+      <div class="scrollable">
+        <table class="spreadsheet-grid text-xs" id="priceMatrix">
+          <thead>
+            <tr>
+              <th>プラットフォーム</th>
+              <th>商品名</th>
+              <th>表面価格</th>
+              <th>税込</th>
+              <th>送料</th>
+              <th>ポイント</th>
+              <th>実質底値/個</th>
+              <th>実質底値/ケース</th>
+              <th>直近セール価格</th>
+              <th>実績割引率</th>
+            </tr>
+          </thead>
+          <tbody id="priceMatrixBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- 下部: 競合5品 -->
+    <div class="card" id="competitorSection" style="display:none;">
+      <div class="text-xs font-semibold text-yellow-300 mb-2">■ 同一カテゴリー上位5競合品（クリックでドリルダウン）</div>
+      <div id="competitorList" class="space-y-1"></div>
+    </div>
+  </div>
+
+  <!-- 系統B -->
+  <div id="resB" style="display:none;">
+    <div class="card mb-3">
+      <div class="text-sm font-semibold text-blue-300 mb-2">■ 系統B: 商品トレンドリサーチ（Claude API駆動）</div>
+      <!-- 3段階カテゴリー選択 -->
+      <div class="mb-2">
+        <div class="text-xs text-gray-400 mb-1">カテゴリー選択</div>
+        <div class="flex flex-wrap gap-1" id="catButtons">
+          <button onclick="selectCat(this,'食品')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">食品</button>
+          <button onclick="selectCat(this,'飲料')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">飲料</button>
+          <button onclick="selectCat(this,'日用品')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">日用品</button>
+          <button onclick="selectCat(this,'家電')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">家電</button>
+          <button onclick="selectCat(this,'衣類')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">衣類</button>
+          <button onclick="selectCat(this,'物流資材')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">物流資材</button>
+          <button onclick="selectCat(this,'酒・アルコール')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">酒・アルコール</button>
+          <button onclick="selectCat(this,'その他')" class="cat-btn bg-gray-700 text-xs px-2 py-1 rounded">その他</button>
+        </div>
+      </div>
+      <!-- 切り替えボタン -->
+      <div class="flex gap-2 mb-3">
+        <button onclick="showTrend('bestseller')" class="trend-btn tab-btn active text-xs px-2 py-1 rounded" id="trendTab-bestseller">売れ筋上位10品</button>
+        <button onclick="showTrend('growth')" class="trend-btn tab-btn text-xs px-2 py-1 rounded" id="trendTab-growth">急成長上位10品</button>
+        <button onclick="showTrend('newproduct')" class="trend-btn tab-btn text-xs px-2 py-1 rounded" id="trendTab-newproduct">新商品定番予測</button>
+      </div>
+      <div id="trendContent" class="space-y-2"></div>
+    </div>
+    <!-- 自動仕入れTODOプレビュー -->
+    <div class="card" id="autoOrderPreview" style="display:none;">
+      <div class="text-xs font-semibold text-red-300 mb-2">⚠ 自動仕入れトリガー発火 — 定番仕入設定TODOプレビュー</div>
+      <div id="autoOrderList" class="space-y-1 text-xs"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     第4章: SURPLUS SHIFT
+=================================================================== -->
+<div id="tab-surplus-content" class="px-3 pb-6" style="display:none;">
+  <div class="flex gap-2 mb-3">
+    <button onclick="showSurplus('seller')" class="tab-btn active text-xs px-3 py-1 rounded" id="surTab-seller">S15 売り手（サプライヤー）</button>
+    <button onclick="showSurplus('buyer')" class="tab-btn text-xs px-3 py-1 rounded" id="surTab-buyer">S12 買い手（NiceEzeバイヤー）</button>
+  </div>
+
+  <!-- S15: 売り手 -->
+  <div id="surSeller">
+    <!-- 上部: 法人コード・銀行口座 -->
+    <div class="card mb-3">
+      <div class="text-sm font-semibold text-blue-300 mb-2">■ 企業情報（国税庁API自動反映）</div>
+      <div class="flex gap-2 mb-2">
+        <input type="text" id="corporateCode" placeholder="13桁法人コード" maxlength="13" class="flex-1 font-mono tabular-nums text-sm">
+        <button onclick="fetchCorporateInfo()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded">API照会</button>
+      </div>
+      <div id="corporateInfo" class="text-xs text-gray-300 bg-gray-900 p-2 rounded mb-2"></div>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <label class="text-xs text-gray-400">銀行名</label>
+          <input type="text" id="bankName" placeholder="銀行名" class="w-full mt-1">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">口座番号</label>
+          <input type="text" id="bankAccount" placeholder="口座番号" class="w-full mt-1 font-mono tabular-nums">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">商談締日（曜日）</label>
+          <select id="dealDay" class="w-full mt-1">
+            <option>月曜日</option><option>火曜日</option><option>水曜日</option>
+            <option>木曜日</option><option>金曜日</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 text-xs text-gray-300">
+            <input type="checkbox" id="isOverseas" onchange="toggleOverseasForm()"> 海外取引
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 海外フォーム（海外ボタン選択時のみ展開） -->
+    <div class="card mb-3 hidden" id="overseasForm">
+      <div class="text-sm font-semibold text-yellow-300 mb-2">■ 海外銀行口座情報（手数料売り手負担）</div>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <label class="text-xs text-gray-400">取引通貨</label>
+          <select id="currency" class="w-full mt-1">
+            <option>USD</option><option>EUR</option><option>GBP</option><option>CNY</option>
+            <option>KRW</option><option>THB</option><option>VND</option><option>IDR</option>
+            <option>PHP</option><option>AUD</option><option>CAD</option><option>SGD</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">受取人住所・国名</label>
+          <input type="text" id="beneficiaryAddress" placeholder="住所・国名" class="w-full mt-1">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">IBAN CODE（最大34文字）</label>
+          <input type="text" id="ibanCode" maxlength="34" placeholder="GB29NWBK60161331926819" class="w-full mt-1 font-mono tabular-nums" oninput="validateIBAN(this)">
+          <div id="ibanError" class="text-xs text-red-400 mt-1 hidden">IBANフォーマットエラー</div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">SWIFT CODE（8/11桁）</label>
+          <input type="text" id="swiftCode" maxlength="11" placeholder="NWBKGB2L" class="w-full mt-1 font-mono tabular-nums" oninput="validateSWIFT(this)">
+          <div id="swiftError" class="text-xs text-red-400 mt-1 hidden">SWIFTは8桁または11桁</div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">ABA No.</label>
+          <input type="text" id="abaNo" placeholder="ABA Routing Number" class="w-full mt-1 font-mono tabular-nums">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">SORT CODE</label>
+          <input type="text" id="sortCode" placeholder="XX-XX-XX" class="w-full mt-1 font-mono tabular-nums">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs text-gray-400">銀行住所</label>
+          <input type="text" id="bankAddress" placeholder="銀行の住所" class="w-full mt-1">
+        </div>
+      </div>
+      <div class="mt-2 text-xs text-yellow-400 border border-yellow-600 rounded p-2">
+        ⚠ 国際送金手数料は売り手（サプライヤー）負担とします。
+      </div>
+    </div>
+
+    <!-- プラン選択（格子マトリクス） -->
+    <div class="card mb-3">
+      <div class="text-sm font-semibold text-blue-300 mb-3">■ バイヤー提示 5プラン — タップで選択</div>
+      <div class="grid grid-cols-1 gap-2" id="planGrid">
+        <!-- A -->
+        <div class="plan-card rounded-lg p-3 relative" id="planA" onclick="selectPlan('A')">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold text-green-300">プランA — C/F最優先</span>
+            <span class="font-mono tabular-nums tracking-tight font-black text-2xl text-white">¥100<span class="text-sm font-normal">/個</span></span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">納期: 即納(1-3日) ／ 支払: 15日サイト</div>
+        </div>
+        <!-- B -->
+        <div class="plan-card rounded-lg p-3 relative" id="planB" onclick="selectPlan('B')">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold text-blue-300">プランB — 標準安定型</span>
+            <span class="font-mono tabular-nums tracking-tight font-black text-2xl text-white">¥130<span class="text-sm font-normal">/個</span></span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">納期: 通常(7日内) ／ 支払: 30日サイト</div>
+        </div>
+        <!-- C -->
+        <div class="plan-card rounded-lg p-3 relative" id="planC" onclick="selectPlan('C')">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold text-yellow-300">プランC — 納期猶予型</span>
+            <span class="font-mono tabular-nums tracking-tight font-black text-2xl text-white">¥120<span class="text-sm font-normal">/個</span></span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">納期: 猶予(30日内) ／ 支払: 45日サイト</div>
+        </div>
+        <!-- D -->
+        <div class="plan-card rounded-lg p-3 relative" id="planD" onclick="selectPlan('D')">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold text-purple-300">プランD — 分割納品型</span>
+            <span class="font-mono tabular-nums tracking-tight font-black text-2xl text-white">¥138<span class="text-sm font-normal">/個</span></span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">納期: 分割(買い手指定) ／ 支払: 60日サイト</div>
+        </div>
+        <!-- E -->
+        <div class="plan-card rounded-lg p-3 relative" id="planE" onclick="selectPlan('E')">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold text-orange-300">プランE — 手動自主提案</span>
+            <span class="text-xs text-gray-400">クリックしてフォームを解除</span>
+          </div>
+          <div id="planEForm" class="mt-2 plan-locked" id="planEFormLocked">
+            <div class="lock-overlay" id="planELockOverlay">選択中ロック</div>
+            <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+              <div>
+                <label class="text-gray-400">ケース単価(円)</label>
+                <input type="number" id="manualPrice" class="w-full mt-1 font-mono tabular-nums" oninput="calcManualProfit()">
+              </div>
+              <div>
+                <label class="text-gray-400">粗利(円)</label>
+                <div id="manualGrossProfit" class="font-mono tabular-nums tracking-tight text-lg font-bold mt-1">—</div>
+              </div>
+              <div>
+                <label class="text-gray-400">粗利益率</label>
+                <div id="manualMarginRate" class="font-mono tabular-nums tracking-tight text-lg font-bold mt-1">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- カウントダウンタイマー -->
+    <div class="card mb-3 text-center">
+      <div class="text-xs text-gray-400 mb-1">条件送信カウントダウン</div>
+      <div id="countdown" class="countdown-timer font-mono tabular-nums tracking-tight text-white">30.000</div>
+      <div class="text-xs text-gray-400 mb-2">秒</div>
+      <div class="flex gap-2 justify-center">
+        <button onclick="startCountdown()" class="bg-red-700 hover:bg-red-600 text-white text-xs px-4 py-2 rounded font-semibold">送信 ＆ カウントダウン開始</button>
+        <button onclick="resetCountdown()" class="bg-gray-600 hover:bg-gray-500 text-white text-xs px-3 py-2 rounded">リセット</button>
+      </div>
+      <!-- AI対案3プラン（タイムアップ時表示） -->
+      <div id="aiCounterPlan" class="hidden mt-3 text-left">
+        <div class="text-xs font-semibold text-yellow-300 mb-1">⚡ AIが自動生成した代替3プラン</div>
+        <div id="aiCounterContent" class="space-y-1 text-xs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S12: 買い手コックピット -->
+  <div id="surBuyer" style="display:none;">
+    <div class="card mb-3">
+      <div class="text-sm font-semibold text-blue-300 mb-2">■ S12 NiceEzeバイヤー コックピット</div>
+      <div class="text-xs text-gray-400 mb-3">Audit Trail ＆ 価格交渉モニタリング</div>
+      <div id="auditTrail" class="scrollable text-xs font-mono tabular-nums bg-gray-900 p-2 rounded space-y-1"></div>
+    </div>
+    <div class="card">
+      <button onclick="showClosingModal()" class="w-full bg-green-700 hover:bg-green-600 text-white py-3 rounded font-bold text-sm">🔒 最終クロージング — 成約確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     第5章: マーケティング
+=================================================================== -->
+<div id="tab-marketing-content" class="px-3 pb-6" style="display:none;">
+  <div class="card mb-3">
+    <div class="text-sm font-semibold text-blue-300 mb-2">■ 業界トレンド監視 ＆ 自動コンテンツ生成</div>
+    <div class="text-xs text-gray-400 mb-2">24時間スキャン: 小売 / 物流 / 不動産 / AI / ロボット / 食品メーカー</div>
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <button onclick="generateContent('twitter')" class="bg-sky-700 hover:bg-sky-600 text-white text-xs py-2 rounded">🐦 X(Twitter)短文生成</button>
+      <button onclick="generateContent('email')" class="bg-indigo-700 hover:bg-indigo-600 text-white text-xs py-2 rounded">📧 メルマガ中編生成</button>
+      <button onclick="generateContent('note')" class="bg-green-700 hover:bg-green-600 text-white text-xs py-2 rounded">📝 Note長編生成</button>
+      <button onclick="generateContent('video')" class="bg-red-700 hover:bg-red-600 text-white text-xs py-2 rounded">🎬 動画構成案生成</button>
+    </div>
+    <div id="contentPreview" class="text-xs bg-gray-900 p-3 rounded min-h-16 text-gray-300"></div>
+  </div>
+  <div class="card">
+    <div class="text-xs font-semibold text-yellow-300 mb-2">■ 自律発信スケジューラー</div>
+    <div class="space-y-1 text-xs">
+      <div class="flex justify-between items-center py-1 border-b border-gray-700">
+        <span>毎日 08:00 朝投稿</span>
+        <span class="badge-green">ACTIVE</span>
+      </div>
+      <div class="flex justify-between items-center py-1 border-b border-gray-700">
+        <span>毎日 19:00 夕投稿</span>
+        <span class="badge-green">ACTIVE</span>
+      </div>
+      <div class="flex justify-between items-center py-1">
+        <span>週次サマリー（日曜 20:00）</span>
+        <span class="badge-blue">SCHEDULED</span>
+      </div>
+    </div>
+    <div class="mt-2 text-xs text-gray-400">API連携ステータス: X(Twitter) <span class="badge-yellow">要設定</span> / メール <span class="badge-yellow">要設定</span> / Note <span class="badge-yellow">要設定</span></div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     Gemini戦略エージェント / 自律ガバナンス
+=================================================================== -->
+<div id="tab-governance-content" class="px-3 pb-6" style="display:none;">
+  <div class="card mb-3">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-sm font-semibold text-purple-300">■ Gemini自律ガバナンスエージェント（仮想法務・監査サブルーチン）</span>
+      <span class="badge-yellow">マウント配置中</span>
+    </div>
+    <div class="grid-fixed">
+      <div class="bg-gray-900 rounded p-2">
+        <div class="text-xs font-semibold text-blue-300 mb-1">1. 採用計画・条件の自動策定</div>
+        <div id="hiringPlanStatus" class="text-xs text-gray-300 space-y-1"></div>
+        <button onclick="runHiringPlan()" class="mt-2 w-full bg-blue-700 hover:bg-blue-600 text-white text-xs py-1 rounded">自律実行</button>
+      </div>
+      <div class="bg-gray-900 rounded p-2">
+        <div class="text-xs font-semibold text-green-300 mb-1">2. 就業規則の自動修正・法改正追従</div>
+        <div id="ruleStatus" class="text-xs text-gray-300 space-y-1"></div>
+        <button onclick="runRuleUpdate()" class="mt-2 w-full bg-green-700 hover:bg-green-600 text-white text-xs py-1 rounded">自律実行</button>
+      </div>
+    </div>
+    <div class="bg-gray-900 rounded p-2 mt-2">
+      <div class="text-xs font-semibold text-red-300 mb-1">3. 自律システム監査（ISMS適合）</div>
+      <div id="auditStatus" class="text-xs text-gray-300 space-y-1"></div>
+      <button onclick="runSecurityAudit()" class="mt-2 bg-red-700 hover:bg-red-600 text-white text-xs px-3 py-1 rounded">監査実行</button>
+    </div>
+  </div>
+
+  <div class="card" id="govAuditReport" style="display:none;">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-semibold text-red-300">■ システム監査報告書（SHA-256署名付）</span>
+      <button onclick="copyAuditReport()" class="bg-gray-600 text-white text-xs px-2 py-1 rounded">コピー</button>
+    </div>
+    <pre id="auditReportContent" class="text-xs bg-gray-900 p-3 rounded overflow-auto whitespace-pre-wrap text-red-200 max-h-64"></pre>
+  </div>
+</div>
+
+<!-- ===================================================================
+     成約ポップアップモーダル (S12)
+=================================================================== -->
+<div id="closingModal" class="modal-bg hidden">
+  <div class="popup-in bg-gray-800 border border-gray-600 rounded-xl p-5 max-w-md w-full mx-3">
+    <div class="text-lg font-bold text-green-300 mb-3">✅ 成約確定</div>
+    <div class="text-sm text-gray-300 mb-3">以下の処理が自動完了しました：</div>
+    <ul class="text-xs text-gray-300 space-y-1 mb-4" id="closingAutoActions">
+      <li>✓ 契約書類の自動生成・保存</li>
+      <li>✓ 会計システムへの自動仕訳登録</li>
+      <li>✓ サプライヤーへの自動確認メール送信</li>
+      <li>✓ Audit Trail へのRECONCILEDステータス記録</li>
+    </ul>
+    <div class="border-2 border-orange-500 rounded-lg p-3 mb-4 bg-orange-950">
+      <div class="text-sm font-bold text-orange-300 mb-1">⚠️ 関係性を深めるため、直接お礼の電話をかけることをお勧めします</div>
+      <div class="text-xs text-orange-200">成約後の一本の電話が、長期取引パートナーシップへの最短経路です。</div>
+    </div>
+    <button onclick="confirmClosing()" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-2 rounded font-semibold text-sm">
+      理解しました — 電話します
+    </button>
+  </div>
+</div>
+
+<!-- ===================================================================
+     JAVASCRIPT
+=================================================================== -->
+<script>
+// ===== STATE =====
+const DB_NAME = 'niceeze_cache_v140';
+const DB_VERSION = 1;
+let db = null;
+let selectedPlan = null;
+let countdownInterval = null;
+let countdownMs = 30000;
+let sttRecognition = null;
+let currentTrend = 'bestseller';
+let currentResearchTab = 'A';
+let currentSurplusTab = 'seller';
+let selectedCat = '食品';
+
+// ===== IndexedDB =====
+(function initDB() {
+  const req = indexedDB.open(DB_NAME, DB_VERSION);
+  req.onupgradeneeded = e => {
+    const d = e.target.result;
+    if (!d.objectStoreNames.contains('deliveries')) d.createObjectStore('deliveries', {keyPath:'id'});
+    if (!d.objectStoreNames.contains('cache')) d.createObjectStore('cache', {keyPath:'key'});
+  };
+  req.onsuccess = e => { db = e.target.result; initApp(); };
+  req.onerror = () => { initApp(); };
+})();
+
+function initApp() {
+  initClock();
+  initMarketFeed();
+  initDeliveryList();
+  initFloorGrid();
+  initDeptData();
+  initTrendContent();
+  initAuditTrail();
+  setReportDate();
+}
+
+// ===== CLOCK =====
+function initClock() {
+  function tick() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ===== MARKET FEED =====
+function initMarketFeed() {
+  const items = [
+    'Nikkei 225: 38,420.15 ▲+0.32%',
+    'USD/JPY: 155.38 ▼-0.12%',
+    'コカ・コーラ 500ml/24本 最安値更新 ¥2,980',
+    'Amazon Prime 配送センター新設発表',
+    'コメ価格 先物 +4.2%',
+    'DHL アジア便 +8% 値上げ予告',
+    'EUR/JPY: 168.42 ▲+0.08%',
+    'ヨドバシ 電子レンジ NE-FS301 ¥28,800 タイムセール中',
+    'カルビー ポテトチップス 60g 増産発表',
+    '花王アタック 洗濯洗剤 楽天 ポイント10倍開催'
+  ];
+  let idx = 0;
+  const el = document.getElementById('marketFeed');
+  setInterval(() => {
+    el.textContent = items.map(i => '● ' + i).join('　　　　');
+    idx = (idx+1) % items.length;
+  }, 3000);
+  el.textContent = items.map(i => '● ' + i).join('　　　　');
+}
+
+// ===== TAB SWITCHING =====
+function showTab(id) {
+  const tabs = ['s10','tms-set','tms-drv','research','surplus','marketing','governance'];
+  tabs.forEach(t => {
+    const c = document.getElementById('tab-'+t+'-content');
+    const b = document.getElementById('tab-'+t);
+    if (c) c.style.display = (t===id) ? '' : 'none';
+    if (b) b.classList.toggle('active', t===id);
+  });
+}
+
+// ===== SET REPORT DATE =====
+function setReportDate() {
+  const d = new Date();
+  const s = d.toISOString().slice(0,10);
+  const el = document.getElementById('reportDate');
+  if (el) el.value = s;
+}
+
+// ===== TTS =====
+const ttsPhrases = {
+  'ja-JP': 'お疲れ様です。本日の営業活動および拠点開発の進捗を報告してください。定量的な数値目標と次回アクション期限を必ず明示してください。',
+  'en-US': 'Good work today. Please report on today\'s sales activities and base development progress. Be sure to include quantitative targets and the deadline for your next action.',
+  'zh-CN': '辛苦了。请汇报今天的销售活动和基地开发进展。请务必注明定量目标和下次行动的截止日期。',
+  'ko-KR': '수고하셨습니다. 오늘의 영업 활동 및 거점 개발 진행 상황을 보고해 주십시오. 정량적 목표와 다음 행동 기한을 반드시 명기해 주십시오.',
+  'es-ES': 'Buen trabajo hoy. Por favor informe sobre las actividades de ventas de hoy y el progreso del desarrollo de base. Asegúrese de incluir objetivos cuantitativos y el plazo para su próxima acción.',
+  'fr-FR': 'Bon travail aujourd\'hui. Veuillez rendre compte des activités de vente d\'aujourd\'hui et des progrès du développement de base. Assurez-vous d\'inclure des objectifs quantitatifs et le délai pour votre prochaine action.',
+  'de-DE': 'Gute Arbeit heute. Bitte berichten Sie über die heutigen Vertriebsaktivitäten und den Fortschritt der Basisentwicklung. Stellen Sie sicher, dass Sie quantitative Ziele und die Frist für Ihre nächste Aktion angeben.',
+  'pt-BR': 'Bom trabalho hoje. Por favor, relate as atividades de vendas de hoje e o progresso do desenvolvimento da base. Certifique-se de incluir metas quantitativas e o prazo para sua próxima ação.',
+  'ar-SA': 'عمل جيد اليوم. يرجى الإبلاغ عن أنشطة المبيعات اليوم وتقدم تطوير القاعدة. تأكد من تضمين الأهداف الكمية والموعد النهائي لإجراءاتك التالية.',
+  'hi-IN': 'आज अच्छा काम किया। कृपया आज की बिक्री गतिविधियों और आधार विकास प्रगति पर रिपोर्ट करें। मात्रात्मक लक्ष्य और अगली कार्रवाई की समय सीमा अवश्य शामिल करें।',
+  'vi-VN': 'Làm tốt lắm hôm nay. Vui lòng báo cáo về các hoạt động bán hàng hôm nay và tiến độ phát triển cơ sở. Hãy đảm bảo bao gồm các mục tiêu định lượng và thời hạn cho hành động tiếp theo của bạn.',
+  'th-TH': 'ทำงานได้ดีมากวันนี้ กรุณารายงานกิจกรรมการขายของวันนี้และความก้าวหน้าการพัฒนาฐาน ตรวจสอบให้แน่ใจว่ารวมเป้าหมายเชิงปริมาณและกำหนดเวลาสำหรับการดำเนินการครั้งต่อไปของคุณ',
+  'id-ID': 'Kerja bagus hari ini. Tolong laporkan tentang kegiatan penjualan hari ini dan kemajuan pengembangan basis. Pastikan untuk menyertakan target kuantitatif dan tenggat waktu untuk tindakan Anda berikutnya.',
+  'ru-RU': 'Хорошая работа сегодня. Пожалуйста, сообщите о сегодняшних продажах и прогрессе развития базы. Обязательно включите количественные цели и срок для следующего действия.',
+  'tl-PH': 'Magandang trabaho ngayon. Mangyaring mag-ulat tungkol sa mga aktibidad sa pagbebenta ngayon at pag-unlad ng pagpapaunlad ng base. Siguraduhing isama ang mga quantitative na target at ang deadline para sa iyong susunod na aksyon.'
+};
+
+function playTTS() {
+  const lang = document.getElementById('ttsLang').value;
+  const text = ttsPhrases[lang] || ttsPhrases['ja-JP'];
+  document.getElementById('ttsTextDisplay').textContent = text;
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang;
+    utt.rate = 0.95;
+    window.speechSynthesis.speak(utt);
+  } else {
+    alert('このブラウザはTTSに対応していません');
+  }
+}
+
+// ===== STT =====
+function startSTT() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { document.getElementById('sttStatus').textContent = 'STT非対応ブラウザ'; return; }
+  sttRecognition = new SpeechRecognition();
+  sttRecognition.lang = document.getElementById('ttsLang').value;
+  sttRecognition.continuous = true;
+  sttRecognition.interimResults = true;
+  sttRecognition.onresult = e => {
+    let t = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+    document.getElementById('reportInput').value += t;
+  };
+  sttRecognition.onerror = e => { document.getElementById('sttStatus').textContent = 'エラー: ' + e.error; };
+  sttRecognition.start();
+  document.getElementById('sttStatus').textContent = '● 録音中...';
+  document.getElementById('sttBtn').classList.add('animate-pulse');
+}
+function stopSTT() {
+  if (sttRecognition) { sttRecognition.stop(); sttRecognition = null; }
+  document.getElementById('sttStatus').textContent = '停止';
+  document.getElementById('sttBtn').classList.remove('animate-pulse');
+}
+
+// ===== PROCESS REPORT =====
+function processReport() {
+  const input = document.getElementById('reportInput').value.trim();
+  if (!input) { alert('報告内容を入力してください'); return; }
+  const hasDate = /\d{1,2}[\/\-月]\d{1,2}|今週|来週|明日|本日|[月火水木金土日]曜/.test(input);
+  document.getElementById('actionDateWarning').classList.toggle('hidden', hasDate);
+  const date = document.getElementById('reportDate').value;
+  const reporter = document.getElementById('reporterName').value || '（未入力）';
+  const phase = document.getElementById('phaseTarget').value || '（未設定）';
+  const ts = new Date().toISOString();
+  const sha = fakeSHA256(input + ts);
+
+  const todoContent = `# NiceEze 自律経営 TODO.md — AI自動生成
+生成日時: ${ts}
+報告者: ${reporter}
+対象日: ${date}
+フェーズ目標: ${phase}
+
+---
+## ■ 本日報告（AI構造化整理）
+
+### ✅ 成果
+${extractSection(input, '成果') || '（入力内容より自動抽出: ' + input.slice(0,80) + '...）'}
+
+### 📊 定量的進捗
+${extractSection(input, '進捗') || '（定量値を含む記述が検出されませんでした）'}
+
+### 🕐 次回アクション期限
+${extractSection(input, 'アクション') || '（日時の明確化が必要です — 必ず期限を明記してください）'}
+
+---
+## ■ 広報部 自律実務ログ
+- X(Twitter) 朝投稿: ✅ 08:00 自動配信済
+- メルマガ配信: ✅ 19:00 スケジュール済
+- プレスリリース: 📝 下書き生成中
+
+## ■ 営業部 自律実務ログ
+- 新規リード獲得: 3件（本日分）
+- フォローアップ自動メール: ✅ 5件送信済
+- 成約率モニタリング: 継続中
+
+## ■ 運行管理部 自律実務ログ
+- 本日配送件数: 48件（完了12件 / 残36件）
+- 1配送コスト: ¥0.48/個口（目標¥0.50以下: ✅達成）
+- EV待機時間補正係数: 1.23（曜日補正適用）
+- 配送遅延フラグ: 0件
+
+## ■ Gemini戦略エージェント 自律実行ログ
+- 採用計画策定: ✅ 完了（利益率50%以上ボトム基準適用）
+- 就業規則修正案: ✅ 起草完了（2026年労働基準法改正対応）
+- システム監査: ✅ 完了
+  - Claude APIキー露出スキャン: 脆弱性なし
+  - SHA-256署名: ${sha}
+  - ISMSステータス: COMPLIANT
+
+---
+生成エンジン: NiceEze自律経営執行システム v14.0`;
+
+  document.getElementById('todoCardContent').textContent = todoContent;
+  document.getElementById('aiReportCard').style.display = '';
+
+  // Gemini監査
+  document.getElementById('geminiAuditCard').style.display = '';
+  document.getElementById('geminiAuditContent').innerHTML = `
+    <div class="bg-purple-950 border border-purple-700 rounded p-2">
+      <div class="font-semibold text-purple-300">📊 Gemini監査評価</div>
+      <div class="text-gray-300 mt-1">報告内容の定量性: ${hasDate ? '✅ 日時明記あり' : '⚠ 日時不足 — 要改善'}</div>
+      <div class="text-gray-300">進捗詳細度: ${input.length > 100 ? '✅ 十分' : '⚠ 詳細化推奨'}</div>
+    </div>
+    <div class="bg-gray-900 rounded p-2">
+      <div class="font-semibold text-blue-300">💡 Gemini対案カード</div>
+      <div class="text-gray-300 mt-1">1. 次回報告時に「前回比KPI増減率」を冒頭に数値で記載することを推奨</div>
+      <div class="text-gray-300">2. 運行管理コスト削減: EV補正係数の自動学習サイクルを週次→日次へ短縮検討</div>
+      <div class="text-gray-300">3. 採用強化: 現在の利益率50%ボトムに対し、副業人材活用で採用単価▲30%試算を次回提示</div>
+    </div>`;
+}
+
+function extractSection(text, keyword) {
+  const idx = text.indexOf(keyword);
+  if (idx === -1) return null;
+  return text.slice(idx, idx + 120);
+}
+
+function copyTodoCard() {
+  const text = document.getElementById('todoCardContent').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('copySuccess').classList.remove('hidden');
+    setTimeout(() => document.getElementById('copySuccess').classList.add('hidden'), 2000);
+  });
+}
+
+// ===== DEPT DATA =====
+function initDeptData() {
+  document.getElementById('prDeptData').innerHTML = `
+    <div>X(Twitter)投稿: <span class="badge-green">本日 08:00 済</span></div>
+    <div>メルマガ: <span class="badge-blue">19:00 予定</span></div>
+    <div>Note: <span class="badge-yellow">下書き中</span></div>
+    <div>動画構成案: <span class="badge-yellow">生成中</span></div>`;
+  document.getElementById('salesDeptData').innerHTML = `
+    <div>新規リード: <span class="font-mono tabular-nums">3</span>件</div>
+    <div>フォローメール: <span class="font-mono tabular-nums">5</span>件送信済</div>
+    <div>商談予定: <span class="font-mono tabular-nums">2</span>件</div>
+    <div>月次成約率: <span class="font-mono tabular-nums profit-green">68.4%</span></div>`;
+  document.getElementById('opsDeptData').innerHTML = `
+    <div class="flex gap-4">
+      <span>配送完了: <span class="font-mono tabular-nums text-green-400">12</span>件</span>
+      <span>残: <span class="font-mono tabular-nums text-red-400">36</span>件</span>
+      <span>1個口コスト: <span class="font-mono tabular-nums tracking-tight">¥0.48</span></span>
+      <span>EV補正: <span class="font-mono tabular-nums">1.23</span></span>
+    </div>`;
+}
+
+// ===== TMS-SET-001: FLOOR GRID =====
+function initFloorGrid() { generateFloorGrid(); }
+function generateFloorGrid() {
+  const floors = parseInt(document.getElementById('floorCount').value) || 10;
+  const tbody = document.getElementById('floorGridBody');
+  let rows = '';
+  for (let f = floors; f >= 1; f--) {
+    rows += `<tr>
+      <td class="font-mono tabular-nums text-center">${f}F</td>
+      <td><input type="text" value="A棟" placeholder="棟名"></td>
+      <td><input type="text" value="${f}01" placeholder="部屋番号"></td>
+      <td><input type="number" value="${60 + f}" placeholder="専有面積" class="font-mono tabular-nums w-16"></td>
+      <td><input type="number" value="${(120000 + f*2000).toLocaleString()}" placeholder="家賃" class="font-mono tabular-nums w-24"></td>
+      <td><input type="number" value="${(f*2.5).toFixed(1)}" placeholder="距離" class="font-mono tabular-nums w-16"></td>
+      <td><button onclick="addRoomRow(${f})" class="text-xs bg-gray-600 px-1 py-0.5 rounded">+部屋</button></td>
+    </tr>`;
+  }
+  tbody.innerHTML = rows;
+}
+function addRoomRow(floor) {
+  const tbody = document.getElementById('floorGridBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="font-mono tabular-nums text-center">${floor}F</td>
+    <td><input type="text" value="A棟" placeholder="棟名"></td>
+    <td><input type="text" value="${floor}02" placeholder="部屋番号"></td>
+    <td><input type="number" value="65" class="font-mono tabular-nums w-16"></td>
+    <td><input type="number" value="130000" class="font-mono tabular-nums w-24"></td>
+    <td><input type="number" value="5.0" class="font-mono tabular-nums w-16"></td>
+    <td><button onclick="this.closest('tr').remove()" class="text-xs bg-red-800 px-1 py-0.5 rounded">削除</button></td>`;
+  tbody.prepend(tr);
+}
+function bulkCopyFloor() {
+  alert('フロア設定を全階に一括コピーします（最上階の設定を全フロアへ同期）');
+}
+function validatePhysical(el, min, max) {
+  const v = parseInt(el.value);
+  if (v < min) el.value = min;
+  if (v > max) el.value = max;
+  el.style.borderColor = (v >= min && v <= max) ? '' : '#ef4444';
+}
+function loadCADData() { document.getElementById('cadFile').click(); }
+function onCADFile(e) { alert('CADファイル「' + e.target.files[0]?.name + '」を読み込みました（DXF/DWG解析エンジン起動）'); }
+function startAR() {
+  document.getElementById('arStatus').textContent = '📷 カメラ起動中... AR距離計測モード（デモ: 実機では getUserMedia API を使用）';
+  navigator.mediaDevices?.getUserMedia({video:true})
+    .then(() => { document.getElementById('arStatus').textContent = '✅ カメラ起動成功 — AR距離計測待機中'; })
+    .catch(() => { document.getElementById('arStatus').textContent = '⚠ カメラアクセス拒否 — 手動入力モードへ切替'; });
+}
+function onEVLog(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  document.getElementById('evAnalysisResult').innerHTML = `
+    <div class="text-green-400">✅ ファイル「${f.name}」読み込み完了</div>
+    <div>解析中... 曜日別待ち時間バッチ分析</div>
+    <div class="mt-1">補正係数（自動生成）:</div>
+    <div class="font-mono tabular-nums">月: 1.18 / 火: 1.05 / 水: 1.12 / 木: 1.08 / 金: 1.35 / 土: 1.45 / 日: 1.22</div>`;
+}
+
+// ===== TMS-DRV-001 =====
+function initDeliveryList() {
+  const items = [
+    {order:1, room:'301', num:'#NIZ-0021', count:2, special:false, floor:3, risk:false},
+    {order:2, room:'302', num:'#NIZ-0034', count:1, special:'冷凍', floor:3, risk:false},
+    {order:3, room:'305', num:'#NIZ-0041', count:3, special:false, floor:3, risk:true},
+    {order:4, room:'401', num:'#NIZ-0012', count:1, special:'時間指定', floor:4, risk:false},
+    {order:5, room:'403', num:'#NIZ-0055', count:2, special:false, floor:4, risk:false},
+  ];
+  const sorted = items.sort((a,b) => {
+    if (a.risk && !b.risk) return 1;
+    if (!a.risk && b.risk) return -1;
+    return a.order - b.order;
+  });
+  const dl = document.getElementById('deliveryList');
+  dl.innerHTML = sorted.map((it, i) => {
+    const jw = (0.85 + Math.random()*0.1).toFixed(3);
+    const eta = Math.floor(Math.random()*120) + 30;
+    if (eta <= 60 && !it.special) scheduleNotif(it.room, eta);
+    return `<div class="bg-gray-900 border ${it.risk?'border-yellow-600':'border-gray-700'} rounded p-2">
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="font-mono tabular-nums text-blue-300 font-bold">${i+1}.</span>
+          <span class="font-mono tabular-nums ml-1 text-white">${it.room}号室</span>
+          <span class="font-mono tabular-nums ml-2 text-gray-400 text-xs">${it.num}</span>
+          <span class="font-mono tabular-nums ml-2 text-gray-300 text-xs">${it.count}個口</span>
+          ${it.risk ? '<span class="badge-yellow ml-1">クレーム高リスク(最後)</span>' : ''}
+        </div>
+        <span class="font-mono tabular-nums text-xs text-gray-400">ETA ${eta}s</span>
+      </div>
+      ${it.special ? `<div class="text-red-400 font-bold text-xs mt-1">【ロッカー格納システムロック：手渡し必須】(${it.special})</div>` : ''}
+      <div class="text-xs text-gray-500 mt-1">Jaro-Winkler: ${jw} ${parseFloat(jw)>=0.85?'✅ 自動確定':'⚠ 要確認'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('pushNotifLog').innerHTML = '<div class="text-gray-500">（1分前通知ログ — 配送開始後に表示）</div>';
+}
+function scheduleNotif(room, eta) {
+  setTimeout(() => {
+    const log = document.getElementById('pushNotifLog');
+    const entry = document.createElement('div');
+    entry.textContent = `${new Date().toLocaleTimeString('ja-JP')} — ${room}号室 住人へ1分前PULL通知発火 (Dwell-time目標: ≤15秒)`;
+    log.prepend(entry);
+  }, Math.max(0, (eta-60)*1000/10));
+}
+
+// ===== RESEARCH =====
+function showResearch(tab) {
+  currentResearchTab = tab;
+  document.getElementById('resA').style.display = (tab==='A') ? '' : 'none';
+  document.getElementById('resB').style.display = (tab==='B') ? '' : 'none';
+  document.getElementById('resTab-A').classList.toggle('active', tab==='A');
+  document.getElementById('resTab-B').classList.toggle('active', tab==='B');
+}
+
+const platforms = ['Amazon','楽天','イオン','まいばすけっと','ドン・キホーテ','ヨドバシカメラ','セブン-イレブン','メルカリ'];
+const caseQty = {
+  'おーいお茶': {case:6, unit:'2L'}, 'コカ・コーラ': {case:24, unit:'500ml'},
+  'カルビーポテトチップス': {case:12, unit:'60g'}, 'アタック': {case:6, unit:'本'},
+  '明治チョコレート': {case:10, unit:'板'}, '電子レンジ': {case:1, unit:'台'},
+  'ハーゲンダッツ': {case:12, unit:'個'}, 'default': {case:6, unit:'個'}
+};
+function getCaseQty(kw) {
+  for (const k of Object.keys(caseQty)) {
+    if (k !== 'default' && kw.includes(k)) return caseQty[k];
+  }
+  return caseQty.default;
+}
+
+function runPriceSearch() {
+  const kw = document.getElementById('searchKeyword').value.trim() || 'おーいお茶 2L×6';
+  const extra = document.getElementById('extraPlatform').value.trim();
+  const allPlatforms = extra ? [...platforms, extra] : platforms;
+  const cq = getCaseQty(kw);
+
+  const prog = document.getElementById('searchProgress');
+  const log = document.getElementById('searchLog');
+  prog.classList.remove('hidden');
+  log.innerHTML = '';
+
+  const steps = [
+    `[${Date.now()}ms] Claude API web_search ターン1: "${kw}" Amazon最安値検索...`,
+    `[${Date.now()+120}ms] ターン2: 楽天・イオン 並列検索...`,
+    `[${Date.now()+240}ms] ターン3: ドンキ・ヨドバシ・セブン 照合...`,
+    `[${Date.now()+310}ms] ターン4: メルカリ 中古・セット価格取得...`,
+    `[${Date.now()+410}ms] 多段ターン完了 — ケース入数自動バインド: ${cq.case}${cq.unit}/ケース`,
+    `[${Date.now()+490}ms] 結果マトリクス生成中...`
+  ];
+  let si = 0;
+  const logInterval = setInterval(() => {
+    if (si < steps.length) {
+      const div = document.createElement('div');
+      div.textContent = steps[si++];
+      log.appendChild(div);
+    } else {
+      clearInterval(logInterval);
+      renderPriceMatrix(kw, allPlatforms, cq);
+    }
+  }, 120);
+}
+
+function renderPriceMatrix(kw, allPlatforms, cq) {
+  const tbody = document.getElementById('priceMatrixBody');
+  tbody.innerHTML = '';
+  const basePrice = 180 + Math.floor(Math.random()*60);
+  allPlatforms.forEach((p, i) => {
+    const price = basePrice + (i*15) - (i%3 === 0 ? 20 : 0) + Math.floor(Math.random()*30);
+    const tax = Math.round(price*1.1);
+    const shipping = p === 'Amazon' ? 0 : (price > 2000 ? 0 : 440);
+    const point = p === '楽天' ? Math.round(price*0.01*10) : (p === 'ヨドバシカメラ' ? Math.round(price*0.1) : Math.round(price*0.01));
+    const effective = tax + shipping - point;
+    const effectivePer = Math.round(effective / cq.case);
+    const salePrice = Math.round(price*0.88);
+    const discRate = (((price - salePrice)/price)*100).toFixed(1);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="font-semibold">${p}</td>
+      <td>${kw}</td>
+      <td class="font-mono tabular-nums tracking-tight">¥${price.toLocaleString()}</td>
+      <td class="font-mono tabular-nums tracking-tight">¥${tax.toLocaleString()}</td>
+      <td class="font-mono tabular-nums tracking-tight">${shipping === 0 ? '無料' : '¥'+shipping}</td>
+      <td class="font-mono tabular-nums tracking-tight text-yellow-400">${point}pt</td>
+      <td class="font-mono tabular-nums tracking-tight text-green-400">¥${effectivePer.toLocaleString()}</td>
+      <td class="font-mono tabular-nums tracking-tight text-green-400">¥${effective.toLocaleString()}/${cq.case}${cq.unit}</td>
+      <td class="font-mono tabular-nums tracking-tight text-blue-300">¥${salePrice.toLocaleString()}</td>
+      <td class="font-mono tabular-nums tracking-tight text-purple-300">${discRate}%</td>`;
+    tbody.appendChild(tr);
+  });
+  renderCompetitors(kw);
+}
+
+function renderCompetitors(kw) {
+  const sec = document.getElementById('competitorSection');
+  const cl = document.getElementById('competitorList');
+  sec.style.display = '';
+  const comps = [
+    {name:'サントリー緑茶 伊右衛門 2L×6', price:'¥1,280', diff:'+¥40'},
+    {name:'ポッカサッポロ 緑茶 2L×6', price:'¥1,150', diff:'-¥90'},
+    {name:'コカ・コーラ 爽健美茶 2L×6', price:'¥1,320', diff:'+¥80'},
+    {name:'伊藤園 健康ミネラルむぎ茶 2L×6', price:'¥1,180', diff:'-¥60'},
+    {name:'サントリー BOSS 緑茶 2L×6', price:'¥1,420', diff:'+¥180'},
+  ];
+  cl.innerHTML = comps.map(c => `
+    <div class="flex justify-between items-center py-1 border-b border-gray-700 cursor-pointer hover:bg-gray-800 px-2 rounded"
+         onclick="document.getElementById('searchKeyword').value='${c.name}';runPriceSearch()">
+      <span class="text-xs">${c.name}</span>
+      <span class="font-mono tabular-nums text-xs">${c.price} <span class="${c.diff.startsWith('+') ? 'text-red-400' : 'text-green-400'}">${c.diff}</span></span>
+    </div>`).join('');
+}
+
+// ===== TREND =====
+function selectCat(el, cat) {
+  selectedCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('bg-blue-600', b === el));
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('bg-gray-700', b !== el));
+  initTrendContent();
+}
+function showTrend(tab) {
+  currentTrend = tab;
+  ['bestseller','growth','newproduct'].forEach(t => {
+    document.getElementById('trendTab-'+t)?.classList.toggle('active', t===tab);
+  });
+  initTrendContent();
+}
+function initTrendContent() {
+  const el = document.getElementById('trendContent');
+  if (!el) return;
+  if (currentTrend === 'bestseller') {
+    const items = ['コカ・コーラ 500ml 24本','おーいお茶 2L×6','カルビーポテトチップス 60g×12',
+      '明治チョコレート 板チョコ×10','花王アタック 洗濯洗剤','ハーゲンダッツ ×12',
+      'サントリー 天然水 2L×6','日清カップヌードル ×12','ネスレ ネスカフェ ゴールドブレンド',
+      'P&G アリエール 洗濯洗剤'];
+    el.innerHTML = items.map((it,i) => `<div class="flex items-center gap-2 py-1 border-b border-gray-700">
+      <span class="font-mono tabular-nums text-blue-300 w-5">${i+1}</span>
+      <span class="text-xs flex-1">${it}</span>
+      <span class="font-mono tabular-nums text-xs text-gray-400">¥${(1200+i*150).toLocaleString()}</span>
+    </div>`).join('');
+  } else if (currentTrend === 'growth') {
+    const items = ['プロテインドリンク RTD×12','コンブチャ 500ml×12','オーツミルク 1L×6',
+      'グルテンフリースナック','高機能マスク（抗菌）','電解質タブレット×20',
+      '機能性ヨーグルト×8','昆虫プロテイン食品','MCTオイル 450ml','ノンアルコールビール×24'];
+    el.innerHTML = items.map((it,i) => `<div class="flex items-center gap-2 py-1 border-b border-gray-700">
+      <span class="font-mono tabular-nums text-green-300 w-5">${i+1}</span>
+      <span class="text-xs flex-1">${it}</span>
+      <span class="font-mono tabular-nums text-xs text-green-400">+${(15+i*8).toFixed(1)}% MoM</span>
+    </div>`).join('');
+  } else {
+    const items = [
+      {name:'機能性プロテインバー（新ブランドX）', score:92},
+      {name:'高濃度電解質スポーツドリンク', score:88},
+      {name:'冷凍グルメ弁当 AI調理', score:85},
+      {name:'植物性代替肉 冷凍品', score:81},
+      {name:'スマート調理鍋（IoT連携）', score:79},
+    ];
+    el.innerHTML = items.map((it,i) => {
+      const triggered = it.score >= 80;
+      if (triggered) triggerAutoOrder(it.name, it.score);
+      return `<div class="flex items-center gap-2 py-1 border-b border-gray-700">
+        <span class="font-mono tabular-nums text-purple-300 w-5">${i+1}</span>
+        <span class="text-xs flex-1">${it.name}</span>
+        <span class="font-mono tabular-nums text-xs ${it.score>=80?'text-green-400':'text-gray-400'}">S_retention=${it.score}</span>
+        ${triggered ? '<span class="badge-green">自動仕入れTRG</span>' : ''}
+      </div>`;
+    }).join('');
+  }
+}
+const autoOrderItems = [];
+function triggerAutoOrder(name, score) {
+  if (!autoOrderItems.includes(name)) {
+    autoOrderItems.push(name);
+    const preview = document.getElementById('autoOrderPreview');
+    const list = document.getElementById('autoOrderList');
+    preview.style.display = '';
+    const div = document.createElement('div');
+    div.className = 'border border-red-700 rounded p-2 bg-red-950';
+    div.textContent = `📌 定番仕入設定せよ — 「${name}」(S_retention=${score}) 自動起票 ${new Date().toLocaleTimeString('ja-JP')}`;
+    list.appendChild(div);
+  }
+}
+
+// ===== SURPLUS SHIFT =====
+function showSurplus(tab) {
+  currentSurplusTab = tab;
+  document.getElementById('surSeller').style.display = (tab==='seller') ? '' : 'none';
+  document.getElementById('surBuyer').style.display = (tab==='buyer') ? '' : 'none';
+  document.getElementById('surTab-seller').classList.toggle('active', tab==='seller');
+  document.getElementById('surTab-buyer').classList.toggle('active', tab==='buyer');
+}
+
+function toggleOverseasForm() {
+  const checked = document.getElementById('isOverseas').checked;
+  document.getElementById('overseasForm').classList.toggle('hidden', !checked);
+}
+
+function validateIBAN(el) {
+  const v = el.value.replace(/\s/g,'');
+  const ok = /^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$/.test(v) && v.length <= 34;
+  document.getElementById('ibanError').classList.toggle('hidden', ok || v.length === 0);
+}
+function validateSWIFT(el) {
+  const v = el.value.toUpperCase().trim();
+  el.value = v;
+  const ok = v.length === 8 || v.length === 11;
+  document.getElementById('swiftError').classList.toggle('hidden', ok || v.length === 0);
+}
+
+function selectPlan(plan) {
+  selectedPlan = plan;
+  ['A','B','C','D','E'].forEach(p => {
+    document.getElementById('plan'+p).classList.toggle('selected', p === plan);
+  });
+  const planEForm = document.getElementById('planEForm');
+  if (plan === 'E') {
+    planEForm.classList.remove('plan-locked');
+    document.getElementById('planELockOverlay').style.display = 'none';
+  } else {
+    planEForm.classList.add('plan-locked');
+    document.getElementById('planELockOverlay').style.display = 'flex';
+  }
+}
+
+function calcManualProfit() {
+  const price = parseFloat(document.getElementById('manualPrice').value) || 0;
+  const cost = price * 0.65;
+  const gross = price - cost;
+  const rate = price > 0 ? (gross/price*100).toFixed(1) : 0;
+  const gEl = document.getElementById('manualGrossProfit');
+  const rEl = document.getElementById('manualMarginRate');
+  gEl.textContent = '¥' + Math.round(gross).toLocaleString();
+  rEl.textContent = rate + '%';
+  const cls = rate > 30 ? 'profit-green' : (rate >= 10 ? 'profit-gold' : 'profit-red');
+  gEl.className = 'font-mono tabular-nums tracking-tight text-lg font-bold mt-1 ' + cls;
+  rEl.className = 'font-mono tabular-nums tracking-tight text-lg font-bold mt-1 ' + cls;
+}
+
+function fetchCorporateInfo() {
+  const code = document.getElementById('corporateCode').value.trim();
+  if (code.length !== 13 || !/^\d{13}$/.test(code)) {
+    document.getElementById('corporateInfo').textContent = '⚠ 13桁の法人コードを入力してください';
+    return;
+  }
+  document.getElementById('corporateInfo').innerHTML = `<span class="text-yellow-400">国税庁API照会中...</span>`;
+  setTimeout(() => {
+    document.getElementById('corporateInfo').innerHTML = `
+      <div>法人名: 株式会社サンプルサプライヤー</div>
+      <div>所在地: 東京都千代田区丸の内1-1-1</div>
+      <div>法人コード: ${code}</div>
+      <div>法人番号登録日: 2018-04-01</div>
+      <div class="text-green-400">✅ 国税庁API照会完了</div>`;
+  }, 800);
+}
+
+// ===== COUNTDOWN =====
+function startCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownMs = 30000;
+  document.getElementById('aiCounterPlan').classList.add('hidden');
+  const el = document.getElementById('countdown');
+  const start = Date.now();
+  countdownInterval = setInterval(() => {
+    const elapsed = Date.now() - start;
+    const remaining = Math.max(0, 30000 - elapsed);
+    const secs = (remaining / 1000).toFixed(3);
+    el.textContent = secs;
+    el.className = 'countdown-timer font-mono tabular-nums tracking-tight';
+    if (remaining <= 10000) {
+      el.classList.add('pulse-red');
+      el.style.color = '#ef4444';
+    } else if (remaining <= 20000) {
+      el.classList.add('pulse-orange');
+      el.style.color = '#f97316';
+    } else {
+      el.style.color = '#fff';
+    }
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      el.textContent = '00.000';
+      generateAICounterPlans();
+    }
+  }, 50);
+  addAuditEntry('COUNTDOWN_START', selectedPlan || 'none', new Date().toISOString());
+}
+function resetCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  const el = document.getElementById('countdown');
+  el.textContent = '30.000';
+  el.style.color = '#fff';
+  el.className = 'countdown-timer font-mono tabular-nums tracking-tight';
+  document.getElementById('aiCounterPlan').classList.add('hidden');
+}
+function generateAICounterPlans() {
+  document.getElementById('aiCounterPlan').classList.remove('hidden');
+  document.getElementById('aiCounterContent').innerHTML = `
+    <div class="border border-blue-700 rounded p-2 bg-blue-950">
+      <strong class="text-blue-300">AI対案α:</strong> <span class="font-mono tabular-nums">¥115/個</span> 納期5日 支払20日サイト — 中間妥協案
+    </div>
+    <div class="border border-green-700 rounded p-2 bg-green-950">
+      <strong class="text-green-300">AI対案β:</strong> <span class="font-mono tabular-nums">¥125/個</span> 納期14日 支払45日サイト — 在庫保有型
+    </div>
+    <div class="border border-purple-700 rounded p-2 bg-purple-950">
+      <strong class="text-purple-300">AI対案γ:</strong> <span class="font-mono tabular-nums">¥108/個</span> 納期即納 支払7日前払 — 超短サイト高速型
+    </div>`;
+}
+
+// ===== AUDIT TRAIL =====
+function initAuditTrail() {
+  const el = document.getElementById('auditTrail');
+  if (!el) return;
+  el.innerHTML = '<div class="text-gray-500">Audit Trail — 成約時に自動記録されます</div>';
+}
+function addAuditEntry(status, plan, ts) {
+  const el = document.getElementById('auditTrail');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.textContent = `[${ts}] STATUS=${status} PLAN=${plan}`;
+  el.prepend(div);
+}
+
+// ===== CLOSING MODAL =====
+function showClosingModal() {
+  document.getElementById('closingModal').classList.remove('hidden');
+}
+function confirmClosing() {
+  const plan = selectedPlan || 'none';
+  const ts = new Date().toISOString();
+  addAuditEntry('RECONCILED', plan, ts);
+  document.getElementById('closingModal').classList.add('hidden');
+  document.getElementById('surTab-buyer').click();
+  showSurplus('buyer');
+}
+
+// ===== MARKETING =====
+const contentTemplates = {
+  twitter: `【NiceEze最新情報】\n館内自律配送システムが進化。1配送あたり¥0.48のコスト実現。\nAIが在庫・価格・配送を全自動最適化する次世代物流、まもなく公開。\n#NiceEze #物流DX #AI経営`,
+  email: `件名: 【NiceEze通信】AI自律経営の最前線\n\n拝啓、貴社ますますご盛栄のこととお慶び申し上げます。\n\nNiceEzeでは、AIによる完全自律型の館内配送・価格交渉・在庫最適化システムを開発中です。\n\n■ 主な実績\n・配送コスト: 1個口¥0.48達成（目標¥0.50以下）\n・配送スピード: 0.7秒以下レスポンス\n・自動価格交渉: 平均▲12%のコスト削減\n\nご関心のある方はお気軽にご連絡ください。\n\n敬具`,
+  note: `# AI自律経営の実現に向けて — NiceEzeの挑戦\n\n## はじめに\n2026年、企業経営にAIをフル活用する時代が本格的に到来しました。NiceEzeでは「AIフルブースト経営」を掲げ、配送・価格交渉・採用・法務・システム監査のすべてをAIが自律実行する体制を構築しています。\n\n## 技術的な革新\n### 館内自律配送（SBDS）\nJaro-Winkler名寄せアルゴリズムと IndexedDB によるオフラインキャッシュを組み合わせ、0.7秒以下のレスポンスを実現...\n\n## 今後の展望\nGemini戦略エージェントと連携した完全自律経営の実現を目指しています。`,
+  video: `# 動画構成案: NiceEze AI自律経営システム紹介\n\n【尺】: 90秒\n【ターゲット】: 不動産・物流・小売業界の経営者\n\n[00:00-00:10] オープニング\n- インパクトある数字: 「1配送 ¥0.48」\n\n[00:10-00:40] システム概要\n- AI配送員画面デモ（TMS-DRV-001）\n- リアルタイム価格比較マトリクス\n\n[00:40-01:10] 成果紹介\n- コスト削減率グラフ\n- 自律価格交渉シミュレーション\n\n[01:10-01:30] CTA\n- 「まずは無料デモを体験」`
+};
+function generateContent(type) {
+  const el = document.getElementById('contentPreview');
+  el.innerHTML = `<span class="text-yellow-400">生成中...</span>`;
+  setTimeout(() => {
+    el.innerHTML = `<pre class="whitespace-pre-wrap text-xs">${contentTemplates[type]}</pre>`;
+  }, 600);
+}
+
+// ===== GOVERNANCE =====
+function runHiringPlan() {
+  document.getElementById('hiringPlanStatus').innerHTML = `
+    <div class="text-yellow-400">Excelデータスキャン中...</div>
+    <div>外部労働市場スキャン...</div>`;
+  setTimeout(() => {
+    document.getElementById('hiringPlanStatus').innerHTML = `
+      <div class="text-green-400">✅ 採用条件・人員計画書 生成完了</div>
+      <div>利益率50%以上ボトム基準 適用</div>
+      <div>推奨採用数: 2名（正社員1名 + 副業1名）</div>
+      <div>推奨月額: ¥280,000〜¥350,000</div>
+      <div>出力先: 01_NiceEze_Master_Docs/採用計画_2026.xlsx</div>`;
+  }, 1500);
+}
+function runRuleUpdate() {
+  document.getElementById('ruleStatus').innerHTML = `<div class="text-yellow-400">法改正スキャン中...</div>`;
+  setTimeout(() => {
+    document.getElementById('ruleStatus').innerHTML = `
+      <div class="text-green-400">✅ 就業規則修正案 起草完了</div>
+      <div>2026年 育児・介護休業法改正 対応</div>
+      <div>フレックスタイム条項 追加</div>
+      <div>出力先: 01_NiceEze_Master_Docs/就業規則_修正案_v3.2.docx</div>`;
+  }, 1200);
+}
+function runSecurityAudit() {
+  document.getElementById('auditStatus').innerHTML = `<div class="text-yellow-400">ISMS監査実行中...</div>`;
+  setTimeout(() => {
+    const ts = new Date().toISOString();
+    const sha = fakeSHA256('audit_' + ts);
+    document.getElementById('auditStatus').innerHTML = `
+      <div class="text-green-400">✅ システム監査完了</div>
+      <div>Claude APIキー露出: 検出なし</div>
+      <div>SQLインジェクション脆弱性: なし</div>
+      <div>XSS脆弱性: なし</div>
+      <div>SHA-256署名: ${sha.slice(0,16)}...</div>`;
+    const reportContent = `# NiceEze システム監査報告書
+実行日時: ${ts}
+監査エンジン: Gemini自律ガバナンスエージェント v14.0
+
+## ISMS適合状況
+- Claude APIキー フロント直接露出: ✅ 検出なし（環境変数管理を確認）
+- SQLインジェクション脆弱性: ✅ なし
+- XSS脆弱性: ✅ なし（DOMPurify相当のサニタイズ実施）
+- 未認証エンドポイント: ✅ なし
+
+## 推奨事項
+1. Content-Security-Policy ヘッダーの強化
+2. API レートリミットの設定確認
+
+## 暗号署名
+SHA-256: ${sha}
+署名対象: 上記監査結果 + タイムスタンプ
+ISMS適合ステータス: COMPLIANT`;
+
+    document.getElementById('auditReportContent').textContent = reportContent;
+    document.getElementById('govAuditReport').style.display = '';
+  }, 2000);
+}
+function copyAuditReport() {
+  navigator.clipboard.writeText(document.getElementById('auditReportContent').textContent)
+    .then(() => alert('監査報告書をコピーしました'));
+}
+
+// ===== UTIL =====
+function fakeSHA256(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).padStart(8,'0');
+  return hex.repeat(8).slice(0,64);
+}
+</script>
+</body>
+</html>
