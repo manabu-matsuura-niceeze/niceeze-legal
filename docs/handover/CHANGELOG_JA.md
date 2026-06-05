@@ -319,6 +319,56 @@ CEO判断：要 / 不要
 
 ---
 
+## [SPECIAL-002] 2026-06-05 — RESEARCH MVP完成・MARKETING結合テスト完了・15種ドキュメント生成
+
+### CEO承認
+- 松浦CEO指示: 2026年6月5日付 現行優先順位維持・並列実施
+
+### 追加（RESEARCH MVP完成）
+- `src/research/api.py` — Cloud Run HTTPエントリポイント
+  - GET /health / GET /price?keyword&category / GET /trend?keyword&category&days
+  - stdlib only / CORS * / # nosec B104 (GCP IAM制御) / bandit 0件
+- `tests/test_research.py` — 38テスト全Pass
+  - TestPriceRecord(6) / TestPriceMatrix(8) / TestPriceFetcher(5) / TestProductTrend(11) / TestTrendFetcher(8)
+
+### 追加（MARKETING結合テスト完了）
+- `src/marketing/api.py` — Cloud Run HTTPエントリポイント
+  - GET /health / POST /generate / GET /log/summary / POST /log/add
+  - stdlib only / CORS * / bandit 0件
+- `tests/test_marketing_integration.py` — 30テスト全Pass
+  - TestNewsCrawler(8) / TestContentGenerator(8) / TestDeliveryLog(9) / TestMarketingPipeline(5)
+
+### 修正
+- `src/marketing/news_crawler.py` — article_id SHA-256 64文字全長を保証（12文字切り捨て廃止）
+
+### banditスキャン（累計）
+- 全ソースファイル: High 0 / Medium 0 / Low 0 ✅
+
+### 追加（RESEARCH 5種ドキュメント）
+- `docs/RESEARCH/RESEARCH_BRD_v1.0.docx` (40K) — BRD: KPI(価格調査80%削減/精度≥85%/0.7秒以下)/Gate制/FinOps
+- `docs/RESEARCH/RESEARCH_SRS_v1.0.docx` (40K) — SRS: RES-A01/A02仕様/APIエンドポイント3本/テスト要件
+- `docs/RESEARCH/RESEARCH_SEQ_v1.0.pptx` (37K) — シーケンス図5スライド（価格検索/トレンド/実API/エラー）
+- `docs/RESEARCH/RESEARCH_UI_v1.0.pptx` (40K) — UI設計5スライド（マトリクス/トレンド/ダッシュボード/LAYOUT_MASTER）
+- `docs/RESEARCH/RESEARCH_PHASE_v1.0.pptx` (38K) — フェーズ計画5スライド（G1 MVP/G2実API/FinOps）
+- `scripts/gen_research_docs.py` — 生成スクリプト
+
+### 追加（MARKETING 5種ドキュメント）
+- `docs/MARKETING/MARKETING_BRD_v1.0.docx` (40K) — BRD: KPI(週2投稿≥90%/生成時間90%削減)/判断①C②B反映
+- `docs/MARKETING/MARKETING_SRS_v1.0.docx` (40K) — SRS: NewsCrawler/4フォーマット/cron式/DeliveryLog/APIエンドポイント4本
+- `docs/MARKETING/MARKETING_SEQ_v1.0.pptx` (38K) — シーケンス図5スライド（スケジューラー/生成/手動/エラー）
+- `docs/MARKETING/MARKETING_UI_v1.0.pptx` (39K) — UI設計5スライド（メイン/タブ/スケジュール状態/LAYOUT_MASTER）
+- `docs/MARKETING/MARKETING_PHASE_v1.0.pptx` (38K) — フェーズ計画5スライド（G1結合テスト/G3 Claude API/FinOps）
+- `scripts/gen_marketing_docs.py` — 生成スクリプト
+
+### 優先順位（確定）
+1. RESEARCH MVP完成 ✅
+2. MARKETING結合テスト ✅
+3. SURPLUS Gate A〜D実装 ← G2通常ペース
+4. 自律商談機能 ← G2通常ペース
+5. RESEARCH/MARKETING 10種ドキュメント ✅ 完了
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
