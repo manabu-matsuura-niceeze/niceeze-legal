@@ -12,6 +12,8 @@ from typing import Optional
 
 from .news_crawler import NewsCrawler, CrawlResult, NEWS_CATEGORIES
 from .content_generator import ContentGenerator, ContentInput, GeneratedContent
+from .delivery_log import DeliveryLog
+from .x_poster import XPoster
 
 
 # ──────────────────────────────────────────
@@ -40,6 +42,7 @@ class ScheduleRun:
     crawl_result: Optional[CrawlResult] = None
     generated_contents: list[GeneratedContent] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    x_posts_sent: int = 0
 
     @property
     def success(self) -> bool:
@@ -52,6 +55,7 @@ class ScheduleRun:
             'success': self.success,
             'crawled_articles': len(self.crawl_result.articles) if self.crawl_result else 0,
             'generated_contents': len(self.generated_contents),
+            'x_posts_sent': self.x_posts_sent,
             'errors': self.errors,
             'top_topics': [
                 {
@@ -79,6 +83,8 @@ class ContentScheduler:
     def __init__(self) -> None:
         self.crawler = NewsCrawler()
         self.generator = ContentGenerator()
+        self.delivery_log = DeliveryLog()
+        self.x_poster = XPoster()
 
     def detect_run_type(self) -> str:
         """現在時刻からmoring/eveningを判定（UTC→JST変換）"""
@@ -132,6 +138,21 @@ class ContentScheduler:
                 result.generated_contents.append(content)
         except Exception as exc:
             result.errors.append(f'generation_error: {exc}')
+
+        # Step 3: X投稿文をX APIに投稿
+        try:
+            for content in result.generated_contents:
+                x_result = self.x_poster.post(content.x_post)
+                if x_result.success:
+                    self.delivery_log.add(
+                        content_type='x_post',
+                        topic=content.input_ref.topic,
+                        category=content.input_ref.category,
+                        char_count=len(x_result.text),
+                    )
+                    result.x_posts_sent += 1
+        except Exception as exc:
+            result.errors.append(f'x_post_error: {exc}')
 
         return result
 
