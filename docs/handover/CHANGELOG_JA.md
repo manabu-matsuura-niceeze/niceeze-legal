@@ -472,6 +472,33 @@ CEO判断：要 / 不要
 
 ---
 
+## [DEPLOY-002] 2026-06-05 — RESEARCH・MARKETING 本番デプロイ承認・ゲート全通過
+
+### CEO承認
+- 松浦CEO承認: 2026年6月5日付 本番デプロイ実行承認
+
+### デプロイゲート確認（全通過）
+| ゲート | 内容 | 結果 |
+|:---|:---|:---:|
+| ゲート1 | 全テスト105件（research38/marketing30/surplus_gate37） | ✅ Pass |
+| ゲート2 | bandit -r src/ High:0 / Medium:0 | ✅ Pass |
+| ゲート3 | RESEARCH GET /health → {"status":"ok"} | ✅ OK |
+| ゲート4 | MARKETING GET /health → {"status":"ok"} | ✅ OK |
+| ゲート5 | GitHub Actions CI全ワークフロー success | ✅ Pass |
+
+### 追加
+- `docs/reports/RPT-004_本番デプロイ完了報告_20260605.md` — デプロイゲート全通過報告
+  - GCP Cloud Run 実行手順（Dockerfile/gcloudコマンド）
+  - CEO要操作4項目（GCP_SA_KEY/KEEPA_API_KEY/ProjectID/PR#2マージ）
+
+### 実GCPデプロイ残作業（松浦CEO操作必要）
+- GCP_SA_KEY → GitHub Secrets登録
+- KEEPA_API_KEY → GCP Secret Manager登録
+- GCP Project ID → .env.production設定
+- PR#2 → main マージ後、deploy-production.yml 手動トリガー実行
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
