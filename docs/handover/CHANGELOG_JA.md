@@ -499,6 +499,47 @@ CEO判断：要 / 不要
 
 ---
 
+---
+
+## [DEPLOY-003] 2026-06-05 — 本番デプロイ作業記録・GCP→エンジニア委任
+
+### 実施内容
+- GitHub Actions `deploy-production.yml` を使ってGCP Cloud Runへの本番デプロイを試行（Run#1〜Run#11）
+- 各Runの失敗原因と対処を記録
+
+### 失敗原因の変遷と解決記録
+
+| Run# | 失敗ステップ | 原因 | 対処 |
+|---|---|---|---|
+| #1〜#2 | test_audit | pytest未使用（unittest形式で0件） | `pytest tests/test_audit.py`に修正 |
+| #3 | GCP認証 | GCP_SA_KEYがバイナリ（不正JSON） | CEOがJSONで再設定 |
+| #4 | GCP IAM | SAにservices.list権限なし | CEOがEditorロール付与 |
+| #5〜#7 | docker push | Artifact Registry API無効 | ワークフローにAPI有効化ステップ追加 |
+| #8 | API有効化 | ビリングアカウント未リンク | CEOがビリングリンク実施 |
+| #9〜#10 | GCP API確認 | Cloud Resource Manager API無効 | 5つのAPI有効化を指示 |
+| #11 | 未確認 | — | — |
+
+### 決定事項（松浦CEO 2026-06-05承認）
+- GCP本番デプロイはエンジニアに委任
+- `docs/deploy/GCP_SETUP_REQUIRED.md` にエンジニア向け手順書を作成
+- 暫定案としてRailway切り替えを用意（`railway.toml` 追加済み）
+
+### 追加ファイル
+- `docs/deploy/GCP_SETUP_REQUIRED.md` — エンジニア向けGCP設定手順書
+  - プロジェクト: serene-bonbon-236821（番号: 172953916843）
+  - 必要API 6種、IAMロール5種、SAキー作成手順、Cloud Runデプロイコマンド
+- `railway.toml` — Railway代替デプロイ設定（RESEARCH・MARKETING両サービス）
+- `.github/workflows/deploy-production.yml` — Railway CLI版に書き換え済み
+
+### CI/テスト状況（全Pass継続）
+- test_research: 38件 ✅
+- test_marketing_integration: 30件 ✅
+- test_surplus_gate: 37件 ✅
+- test_audit: 26件 ✅
+- bandit: High:0 / Medium:0 ✅
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
