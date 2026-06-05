@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from .content_generator import ContentGenerator, ContentInput
 from .delivery_log import DeliveryLog
+from .x_poster import XPoster
 
 
 class MarketingHandler(BaseHTTPRequestHandler):
@@ -74,6 +75,13 @@ class MarketingHandler(BaseHTTPRequestHandler):
             )
             from dataclasses import asdict
             self._send_json(201, asdict(record))
+
+        elif self.path == "/x/post":
+            body = self._read_json_body()
+            text = body.get("text", "")
+            poster = XPoster()
+            x_result = poster.post(text)
+            self._send_json(200, x_result.to_dict())
 
         else:
             self._send_json(404, {"error": "Not Found", "path": self.path})

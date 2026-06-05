@@ -250,6 +250,127 @@
 
 ---
 
+---
+
+## [DEPLOY-003] 2026-06-05 — 本番デプロイ作業記録・GCP→エンジニア委任
+
+### 実施内容
+- GitHub Actions `deploy-production.yml` を使ってGCP Cloud Runへの本番デプロイを試行（Run#1〜Run#11）
+- 各Runの失敗原因と対処を記録
+
+### 失敗原因の変遷と解決記録
+
+| Run# | 失敗ステップ | 原因 | 対処 |
+|---|---|---|---|
+| #1〜#2 | test_audit | pytest未使用（unittest形式で0件） | `pytest tests/test_audit.py`に修正 |
+| #3 | GCP認証 | GCP_SA_KEYがバイナリ（不正JSON） | CEOがJSONで再設定 |
+| #4 | GCP IAM | SAにservices.list権限なし | CEOがEditorロール付与 |
+| #5〜#7 | docker push | Artifact Registry API無効 | ワークフローにAPI有効化ステップ追加 |
+| #8 | API有効化 | ビリングアカウント未リンク | CEOがビリングリンク実施 |
+| #9〜#10 | GCP API確認 | Cloud Resource Manager API無効 | 5つのAPI有効化を指示 |
+| #11 | 未確認 | — | — |
+
+### 決定事項（松浦CEO 2026-06-05承認）
+- GCP本番デプロイはエンジニアに委任
+- `docs/deploy/GCP_SETUP_REQUIRED.md` にエンジニア向け手順書を作成
+- 暫定案としてRailway切り替えを用意（`railway.toml` 追加済み）
+
+### 追加ファイル
+- `docs/deploy/GCP_SETUP_REQUIRED.md` — エンジニア向けGCP設定手順書
+  - プロジェクト: serene-bonbon-236821（番号: 172953916843）
+  - 必要API 6種、IAMロール5種、SAキー作成手順、Cloud Runデプロイコマンド
+- `railway.toml` — Railway代替デプロイ設定（RESEARCH・MARKETING両サービス）
+- `.github/workflows/deploy-production.yml` — Railway CLI版に書き換え済み
+
+### CI/テスト状況（全Pass継続）
+- test_research: 38件 ✅
+- test_marketing_integration: 30件 ✅
+- test_surplus_gate: 37件 ✅
+- test_audit: 26件 ✅
+- bandit: High:0 / Medium:0 ✅
+
+---
+
+## [G2-003] 2026-06-05 — Research実API連携 + 自律商談フロー実装
+
+### 追加・更新
+- `src/research/res_a01.py` Ver 1.1 — PriceFetcher 実API連携追加
+  - `RAKUTEN_API_ENDPOINT` / `YAHOO_API_ENDPOINT` 定数追加
+  - `__init__()`: KEEPA_API_KEY / RAKUTEN_APP_ID / YAHOO_CLIENT_ID 環境変数読み込み
+  - `_mock_record()`: モック生成メソッドに切り出し
+  - `_fetch_rakuten()`: 楽天市場商品検索API呼び出し（urllib stdlib only）
+  - `_fetch_yahoo()`: Yahoo!ショッピング商品検索API呼び出し
+  - `fetch()`: supplier別APIルーティング（全てモックフォールバック付き）
+- `src/surplus_shift/negotiation_log.py`（新規）— 自律商談フロー履歴管理
+  - `NegotiationRecord`: draft→human_approved→sent ワークフロー
+  - `NegotiationLog`: add_draft / human_approve / mark_sent / reject メソッド
+  - `mark_sent()`: `human_approved` ステータス必須チェック（自動送信防止）
+  - `human_approval_required: True` を全to_dict()に含む
+- `src/surplus_shift/__init__.py` — NegotiationLog / NegotiationRecord エクスポート追加
+- `tests/test_surplus_gate.py` — TestNegotiationLog 11テスト追加（計48テスト）
+
+### Gate D制約維持確認
+- `human_approval_required=True` 変更禁止（`__setattr__`ガード継続）
+- 自動送信禁止ワークフロー: `mark_sent()` が `human_approved` ステータス必須
+- AIは交渉案作成・提示まで。最終送信は必ず人間担当者が承認後に手動実行
+
+### CI/テスト状況（全Pass）
+- test_surplus_gate: **48件** ✅（37 → 48、+11件）
+- test_research: 38件 ✅
+- bandit: High:0 / Medium:0 ✅
+
+### コミット
+- SHA: 7675f58（`feat: Research実API連携 + 自律商談フロー実装 (G2-003)`）
+
+---
+
+## [G2-004] 2026-06-05 — MARKETING X投稿API連携 + スケジューラーStep3完成
+
+### 追加・更新
+- `src/marketing/x_poster.py`（新規）— X(Twitter) API v2 OAuth 1.0a投稿クライアント
+  - 5環境変数（X_BEARER_TOKEN/X_API_KEY/X_API_SECRET/X_ACCESS_TOKEN/X_ACCESS_TOKEN_SECRET）
+  - 未設定時は自動モックモード
+  - stdlib only（`urllib.request` + `hmac` + `hashlib`）
+  - 140文字超トランケート / エラー時モックフォールバック
+- `src/marketing/scheduler.py` — Step3 X投稿実行追加
+  - `XPoster.post()` 呼び出し → `DeliveryLog.add()` 記録
+  - `ScheduleRun.x_posts_sent` カウント追加
+- `src/marketing/api.py` — POST `/x/post` エンドポイント追加
+- `tests/test_marketing_integration.py` — TestXPoster 9テスト追加（計39件）
+
+### CI/テスト状況（全Pass）
+- test_marketing_integration: **39件** ✅（+9件）
+- bandit: High:0 / Medium:0 ✅
+
+---
+
+## [G2-005] 2026-06-05 — GOVモジュール実装（S10/FinOps/稼働ログ）
+
+### 追加
+- `src/gov/s10_coo_report.py` — S10 COO業務報告エンジン
+  - KPIRecord: 達成率・達成判定
+  - BudgetRecord: 予実差異・執行率
+  - PMOTask: gate別タスク管理（G0〜G4）、ステータス管理
+  - COOReport: 月次レポート生成・kpi/budget/pmoサマリー
+- `src/gov/finops_monitor.py` — FinOps監視エンジン
+  - 1配送¥0.5超アラート（`cost_per_delivery_exceeded`）
+  - 月次予算80%消化警告（`monthly_budget_warning`）
+  - 月次予算¥5,000超過アラート（`monthly_budget_exceeded`）
+- `src/gov/ops_log_collector.py` — 稼働ログ収集エンジン
+  - 対象: sbds/surplus_shift/research/marketing/gov（5サービス）
+  - ログレベル: info/warning/error
+  - `health_status()`: サービス別ヘルス状態（is_healthy: error件数0判定）
+- `src/gov/api.py` — GOV HTTP API（Cloud Run）
+  - GET/POST各種エンドポイント（COO/FinOps/OpsLog）
+- `src/gov/__init__.py` — 全クラスエクスポート
+- `tests/test_gov.py` — 35テスト（COO14/FinOps10/OpsLog11）
+
+### CI/テスト状況（全Pass）
+- test_gov: **35件** ✅（新規）
+- bandit: High:0 / Medium:0 ✅
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
