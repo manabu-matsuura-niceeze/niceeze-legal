@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install python-docx python-pptx bandit pytest
+        run: pip install python-docx python-pptx bandit pytest pytest-cov
 
       - name: Run test_research
         run: python -m unittest tests.test_research -v
@@ -34,6 +34,9 @@ jobs:
 
       - name: Run test_audit
         run: pytest tests/test_audit.py -v --tb=short
+
+      - name: Run E2E tests
+        run: python -m pytest tests/test_e2e.py -v --tb=short --cov=src --cov-report=xml
 
       - name: Security scan (bandit)
         run: bandit -r src/ -ll
