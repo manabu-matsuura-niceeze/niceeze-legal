@@ -1,0 +1,35 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python src/research/api.py"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+[[services]]
+name = "niceeze-research"
+source = "."
+
+[services.build]
+builder = "nixpacks"
+buildCommand = "pip install python-docx python-pptx"
+
+[services.deploy]
+startCommand = "python src/research/api.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+[[services]]
+name = "niceeze-marketing"
+source = "."
+
+[services.build]
+builder = "nixpacks"
+buildCommand = "pip install python-docx python-pptx"
+
+[services.deploy]
+startCommand = "python src/marketing/api.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
