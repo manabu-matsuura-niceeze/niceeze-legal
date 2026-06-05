@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMS-SET-001 | 初期設定・マスタ管理</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+    #app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; gap: 0; }
+    #zone-top { background: #1e293b; border-bottom: 2px solid #334155; padding: 16px 24px; }
+    #zone-top h1 { font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+    .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .spec-field label { display: block; font-size: 11px; color: #64748b; margin-bottom: 4px; }
+    .spec-field input {
+      width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 4px;
+      color: #e2e8f0; padding: 6px 8px;
+      font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; font-size: 14px;
+    }
+    .spec-field input:focus { outline: none; border-color: #3b82f6; }
+    .spec-field input.invalid { border-color: #ef4444; }
+    #zone-mid { overflow: auto; padding: 16px 24px; position: relative; }
+    #zone-mid-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    #zone-mid-header h2 { font-size: 13px; color: #94a3b8; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      background: #1e293b; border: 1px solid #334155; border-radius: 4px;
+      color: #e2e8f0; cursor: pointer; font-size: 12px; padding: 5px 12px; transition: background 0.15s;
+    }
+    .btn:hover { background: #334155; }
+    .btn-primary { background: #1d4ed8; border-color: #2563eb; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-cad { background: #7c3aed; border-color: #8b5cf6; }
+    .btn-cad:hover { background: #8b5cf6; }
+    .btn-ar { background: #0891b2; border-color: #06b6d4; }
+    .btn-ar:hover { background: #06b6d4; }
+    #floor-grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #floor-grid thead th {
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+      font-size: 11px; padding: 8px 12px; text-align: left; white-space: nowrap;
+    }
+    #floor-grid tbody td { border: 1px solid #1e293b; padding: 4px; }
+    #floor-grid tbody tr:hover td { background: #1e293b; }
+    #floor-grid input[type="text"], #floor-grid input[type="number"] {
+      background: transparent; border: none; color: #e2e8f0;
+      font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em; font-size: 13px; padding: 4px 6px; width: 100%;
+    }
+    #floor-grid input:focus { outline: 1px solid #3b82f6; border-radius: 2px; }
+    .btn-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 2px 6px; }
+    #zone-btm {
+      background: #1e293b; border-top: 2px solid #334155;
+      display: flex; gap: 12px; justify-content: flex-end; padding: 12px 24px;
+    }
+    .btn-save { background: #059669; border-color: #10b981; font-size: 14px; padding: 8px 24px; }
+    .btn-save:hover { background: #10b981; }
+    .btn-reset { background: #7f1d1d; border-color: #dc2626; font-size: 14px; padding: 8px 24px; }
+    .btn-reset:hover { background: #dc2626; }
+    #status-bar { font-size: 11px; color: #64748b; align-self: center; flex: 1; }
+    #status-bar.ok { color: #10b981; }
+    #status-bar.err { color: #ef4444; }
+    #status-bar.info { color: #60a5fa; }
+    #toast {
+      position: fixed; bottom: 80px; right: 24px; background: #059669;
+      border-radius: 6px; color: #fff; display: none; font-size: 13px; padding: 10px 16px; z-index: 100;
+    }
+    #toast.show { display: block; animation: fadeInOut 2.5s ease forwards; }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(8px); }
+      15% { opacity: 1; transform: translateY(0); }
+      75% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    /* DXFプレビューモーダル */
+    #dxf-modal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 200; align-items: center; justify-content: center;
+    }
+    #dxf-modal.open { display: flex; }
+    #dxf-modal-box {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 20px; max-width: 700px; width: 95%; max-height: 80vh; overflow-y: auto;
+    }
+    #dxf-modal-box h3 { font-size: 14px; color: #e2e8f0; margin-bottom: 12px; }
+    #dxf-preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #dxf-preview-table th {
+      background: #0f172a; color: #94a3b8; padding: 6px 8px; text-align: left; border: 1px solid #334155;
+    }
+    #dxf-preview-table td {
+      padding: 5px 8px; border: 1px solid #1e293b; color: #e2e8f0;
+      font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;
+    }
+    #dxf-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+    .btn-confirm { background: #059669; border-color: #10b981; }
+    .btn-cancel-modal { background: #374151; border-color: #4b5563; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 上部: 建物基本スペック -->
+  <section id="zone-top">
+    <h1>TMS-SET-001 — 初期設定・マスタ管理</h1>
+    <div class="spec-grid">
+      <div class="spec-field">
+        <label>棟数 (1-20)</label>
+        <input type="number" id="building-count" min="1" max="20" value="1" inputmode="numeric">
+      </div>
+      <div class="spec-field">
+        <label>階数 (1-100)</label>
+        <input type="number" id="floor-count" min="1" max="100" value="10" inputmode="numeric">
+      </div>
+      <div class="spec-field">
+        <label>居住者用EV基数 (0-20)</label>
+        <input type="number" id="ev-residential" min="0" max="20" value="2" inputmode="numeric">
+      </div>
+      <div class="spec-field">
+        <label>業務用EV基数 (最低4基)</label>
+        <input type="number" id="ev-service" min="4" value="4" inputmode="numeric">
+      </div>
+    </div>
+  </section>
+
+  <!-- 中央: フロアグリッドエディタ -->
+  <section id="zone-mid">
+    <div id="zone-mid-header">
+      <h2>フロアスプレッドシート型グリッドエディタ</h2>
+      <div class="btn-group">
+        <button class="btn btn-cad" onclick="triggerDXFImport()">📐 CAD/DXFインポート</button>
+        <button class="btn btn-ar" onclick="launchAR()">📷 AR計測起動</button>
+        <button class="btn btn-primary" onclick="addRow()">+ 行追加</button>
+      </div>
+    </div>
+    <table id="floor-grid">
+      <thead>
+        <tr>
+          <th>棟名</th><th>部屋番号</th><th>専有面積(㎡)</th>
+          <th>家賃(円)</th><th>EV出口距離(m)</th><th>階</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="grid-body"></tbody>
+    </table>
+  </section>
+
+  <!-- 下部: 保存 / リセット -->
+  <section id="zone-btm">
+    <div id="status-bar">未保存の変更があります</div>
+    <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+    <button class="btn btn-save" onclick="saveToIndexedDB()">保存</button>
+  </section>
+</div>
+
+<div id="toast">保存しました ✓</div>
+
+<!-- 隠しファイル入力（DXFインポート用） -->
+<input type="file" id="dxf-file-input" accept=".dxf" style="display:none" onchange="onDXFSelected(event)">
+
+<!-- DXFプレビューモーダル -->
+<div id="dxf-modal">
+  <div id="dxf-modal-box">
+    <h3>📐 DXFインポート プレビュー</h3>
+    <div id="dxf-stats" style="font-size:11px;color:#94a3b8;margin-bottom:10px;"></div>
+    <table id="dxf-preview-table">
+      <thead><tr><th>棟名</th><th>部屋番号</th><th>専有面積(㎡)</th><th>EV出口距離(m)</th><th>推定階</th></tr></thead>
+      <tbody id="dxf-preview-body"></tbody>
+    </table>
+    <div id="dxf-modal-actions">
+      <button class="btn btn-cancel-modal" onclick="closeDXFModal()">キャンセル</button>
+      <button class="btn btn-confirm" onclick="applyDXFData()">グリッドに適用</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── IndexedDB v142 ───────────────────────────────────────────────
+const IDB_NAME = 'niceeze_cache_v142';
+const IDB_VERSION = 142;
+const STORE_MASTERS = 'building_masters';
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_MASTERS))
+        d.createObjectStore(STORE_MASTERS, { keyPath: 'property_id' });
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+function idbPut(storeName, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(data).onsuccess = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+function idbGet(storeName, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+// ── グリッド操作 ─────────────────────────────────────────────────
+let rowId = 0;
+function addRow(data = {}) {
+  const tbody = document.getElementById('grid-body');
+  const id = ++rowId;
+  const tr = document.createElement('tr');
+  tr.dataset.rowId = id;
+  tr.innerHTML = `
+    <td><input type="text" placeholder="A棟" value="${esc(data.building_name || '')}"></td>
+    <td><input type="text" placeholder="0101" value="${esc(data.room_number || '')}"></td>
+    <td><input type="number" placeholder="25.00" step="0.01" min="0" value="${data.area_sqm || ''}"></td>
+    <td><input type="number" placeholder="80000" step="1" min="0" value="${data.rent_jpy || ''}"></td>
+    <td><input type="number" placeholder="15.0" step="0.1" min="0" value="${data.ev_exit_distance_m || ''}"></td>
+    <td><input type="number" placeholder="1" step="1" min="1" value="${data.floor || ''}"></td>
+    <td><button class="btn-del" onclick="deleteRow(${id})">✕</button></td>`;
+  tbody.appendChild(tr);
+  setStatus('未保存の変更があります', '');
+}
+function esc(s) { return String(s).replace(/"/g, '&quot;'); }
+function deleteRow(id) {
+  document.querySelector(`tr[data-row-id="${id}"]`)?.remove();
+  setStatus('未保存の変更があります', '');
+}
+function collectRows() {
+  const rows = [];
+  document.querySelectorAll('#grid-body tr').forEach(tr => {
+    const inp = tr.querySelectorAll('input');
+    rows.push({
+      building_name: inp[0].value.trim(),
+      room_number: inp[1].value.trim(),
+      area_sqm: parseFloat(inp[2].value) || 0,
+      rent_jpy: parseInt(inp[3].value, 10) || 0,
+      ev_exit_distance_m: parseFloat(inp[4].value) || 0,
+      floor: parseInt(inp[5].value, 10) || 1,
+    });
+  });
+  return rows;
+}
+
+// ── バリデーション ───────────────────────────────────────────────
+function validateSpec() {
+  const bc = +document.getElementById('building-count').value;
+  const fc = +document.getElementById('floor-count').value;
+  const evR = +document.getElementById('ev-residential').value;
+  const evS = +document.getElementById('ev-service').value;
+  const e = [];
+  if (bc < 1 || bc > 20) e.push('棟数は1-20');
+  if (fc < 1 || fc > 100) e.push('階数は1-100');
+  if (evR < 0 || evR > 20) e.push('居住者用EVは0-20基');
+  if (evS < 4) e.push('業務用EVは4基以上必須');
+  return e;
+}
+
+// ── 保存・読み込み ───────────────────────────────────────────────
+async function saveToIndexedDB() {
+  const errors = validateSpec();
+  if (errors.length) { setStatus('入力エラー: ' + errors.join(' / '), 'err'); return; }
+  const master = {
+    property_id: 'default',
+    spec: {
+      building_count: +document.getElementById('building-count').value,
+      floor_count: +document.getElementById('floor-count').value,
+      ev_residential: +document.getElementById('ev-residential').value,
+      ev_service: +document.getElementById('ev-service').value,
+    },
+    rooms: collectRows(),
+    updated_at: new Date().toISOString(),
+    _idb_version: IDB_VERSION,
+  };
+  try {
+    await idbPut(STORE_MASTERS, master);
+    showToast();
+    setStatus(`保存完了 — ${master.rooms.length}部屋 / ${new Date().toLocaleTimeString('ja-JP')}`, 'ok');
+  } catch (err) {
+    setStatus('保存失敗: ' + err.message, 'err');
+  }
+}
+async function loadFromIndexedDB() {
+  try {
+    const master = await idbGet(STORE_MASTERS, 'default');
+    if (!master) return;
+    document.getElementById('building-count').value = master.spec.building_count || 1;
+    document.getElementById('floor-count').value = master.spec.floor_count || 10;
+    document.getElementById('ev-residential').value = master.spec.ev_residential || 2;
+    document.getElementById('ev-service').value = master.spec.ev_service || 4;
+    document.getElementById('grid-body').innerHTML = '';
+    rowId = 0;
+    (master.rooms || []).forEach(r => addRow(r));
+    setStatus(`読み込み完了 — ${master.rooms.length}部屋`, 'ok');
+  } catch (err) {
+    setStatus('読み込みエラー: ' + err.message, 'err');
+  }
+}
+function resetAll() {
+  if (!confirm('全データをリセットしますか？')) return;
+  document.getElementById('building-count').value = 1;
+  document.getElementById('floor-count').value = 10;
+  document.getElementById('ev-residential').value = 2;
+  document.getElementById('ev-service').value = 4;
+  document.getElementById('grid-body').innerHTML = '';
+  rowId = 0;
+  setStatus('リセットしました', '');
+}
+
+// ── DXFインポート（G1実装: dxf-parser.js互換軽量パーサー） ─────
+let _dxfParsedRooms = [];
+
+function triggerDXFImport() {
+  document.getElementById('dxf-file-input').value = '';
+  document.getElementById('dxf-file-input').click();
+}
+
+function onDXFSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  setStatus('DXF解析中...', 'info');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const rooms = parseDXFToRooms(e.target.result);
+      showDXFPreview(rooms, file.name);
+    } catch (err) {
+      setStatus('DXF解析エラー: ' + err.message, 'err');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseDXFToRooms(text) {
+  // DXFグループコードペアを抽出
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const groups = [];
+  for (let i = 0; i + 1 < lines.length; i += 2) {
+    const code = parseInt(lines[i].trim(), 10);
+    const val  = lines[i + 1].trim();
+    if (!isNaN(code)) groups.push([code, val]);
+  }
+
+  // ENTITIESセクション抽出
+  let inEntities = false, inSection = false;
+  const entities = [];
+  let cur = null;
+  let lwVerts = [];
+
+  for (let i = 0; i < groups.length; i++) {
+    const [code, val] = groups[i];
+    if (code === 0 && val === 'SECTION') { inSection = true; continue; }
+    if (code === 2 && inSection && val === 'ENTITIES') { inEntities = true; inSection = false; continue; }
+    if (code === 0 && val === 'ENDSEC' && inEntities) {
+      if (cur) { if (lwVerts.length) cur.vertices = lwVerts; entities.push(cur); }
+      break;
+    }
+    if (!inEntities) continue;
+
+    if (code === 0) {
+      if (cur) { if (lwVerts.length) cur.vertices = lwVerts; entities.push(cur); }
+      cur = { type: val, layer: '', x: 0, y: 0, x2: 0, y2: 0, text: '', vertices: [] };
+      lwVerts = [];
+    } else if (cur) {
+      if (code === 8)  cur.layer = val;
+      if (code === 1)  cur.text  = val;
+      if (code === 10) cur.x     = parseFloat(val) || 0;
+      if (code === 20) cur.y     = parseFloat(val) || 0;
+      if (code === 11) cur.x2    = parseFloat(val) || 0;
+      if (code === 21) cur.y2    = parseFloat(val) || 0;
+      // LWPOLYLINEの頂点（code 10/20が繰り返し）
+      if ((cur.type === 'LWPOLYLINE' || cur.type === 'POLYLINE') && code === 10) {
+        lwVerts.push({ x: parseFloat(val) || 0, y: 0 });
+      }
+      if ((cur.type === 'LWPOLYLINE' || cur.type === 'POLYLINE') && code === 20 && lwVerts.length) {
+        lwVerts[lwVerts.length - 1].y = parseFloat(val) || 0;
+      }
+    }
+  }
+  if (cur) { if (lwVerts.length) cur.vertices = lwVerts; entities.push(cur); }
+
+  // 部屋テキスト抽出（TEXT/MTEXT）
+  const ROOM_RE = /^\d{3,4}[A-Za-z]?$/;
+  const texts = entities.filter(e => (e.type === 'TEXT' || e.type === 'MTEXT') && e.text);
+
+  // ポリライン（部屋外周）→ 面積計算（Shoelaceの公式）
+  const polyAreas = {};
+  entities.filter(e => e.type === 'LWPOLYLINE' || e.type === 'POLYLINE').forEach(e => {
+    const v = e.vertices;
+    if (v.length < 3) return;
+    let area = 0;
+    for (let i = 0; i < v.length; i++) {
+      const j = (i + 1) % v.length;
+      area += v[i].x * v[j].y - v[j].x * v[i].y;
+    }
+    // 単位はDXF内部単位（mm想定→㎡変換 /1e6）
+    const areaSqm = Math.abs(area) / 2 / 1e6;
+    const key = `${e.layer}_${Math.round(e.x)}_${Math.round(e.y)}`;
+    polyAreas[key] = areaSqm;
+  });
+
+  // LINE→EV出口距離（最長のLINEをEV廊下距離として使用）
+  const lines = entities.filter(e => e.type === 'LINE');
+  const evDistances = lines.map(e => {
+    const dx = e.x2 - e.x, dy = e.y2 - e.y;
+    return Math.sqrt(dx * dx + dy * dy) / 1000; // mm→m
+  }).filter(d => d > 0 && d < 200);
+  const medianEV = evDistances.length
+    ? evDistances.sort((a, b) => a - b)[Math.floor(evDistances.length / 2)]
+    : 15;
+
+  // 部屋番号らしいテキストを収集
+  const roomTexts = texts.filter(t => ROOM_RE.test(t.text.trim()));
+
+  // テキストが少ない場合は全テキストから部屋番号推定
+  const allTexts = roomTexts.length > 0 ? roomTexts : texts;
+
+  // Y座標でグループ化してフロア推定
+  if (!allTexts.length) {
+    throw new Error('部屋番号テキストが見つかりません。DXFにTEXT/MTEXTエンティティが必要です。');
+  }
+
+  const yValues = allTexts.map(t => t.y).sort((a, b) => a - b);
+  const yMin = yValues[0], yMax = yValues[yValues.length - 1];
+  const yRange = yMax - yMin || 1;
+
+  // レイヤー名を棟名として使用
+  const rooms = allTexts.map((t, i) => {
+    const floorRatio = yRange > 0 ? (t.y - yMin) / yRange : 0;
+    const floorCount = parseInt(document.getElementById('floor-count').value, 10) || 10;
+    const estimatedFloor = Math.max(1, Math.round(floorRatio * (floorCount - 1)) + 1);
+    // ポリラインエリアを近傍検索
+    const areaKey = Object.keys(polyAreas).find(k => {
+      const [, px, py] = k.split('_').map(Number);
+      return Math.abs(px - t.x) < 5000 && Math.abs(py - t.y) < 5000;
+    });
+    const area = areaKey ? Math.round(polyAreas[areaKey] * 100) / 100 : 0;
+    // 棟名：レイヤー名を使用、なければ"A棟"
+    const layerName = t.layer && t.layer !== '0' ? t.layer : 'A棟';
+
+    return {
+      building_name: layerName,
+      room_number: t.text.trim(),
+      area_sqm: area > 0 ? area : 0,
+      rent_jpy: 0,
+      ev_exit_distance_m: Math.round(medianEV * 10) / 10 + (i % 3) * 2,
+      floor: estimatedFloor,
+    };
+  });
+
+  return rooms;
+}
+
+function showDXFPreview(rooms, filename) {
+  _dxfParsedRooms = rooms;
+  document.getElementById('dxf-stats').textContent =
+    `ファイル: ${filename} | 抽出部屋数: ${rooms.length}件`;
+  const tbody = document.getElementById('dxf-preview-body');
+  tbody.innerHTML = rooms.slice(0, 30).map(r => `
+    <tr>
+      <td>${esc(r.building_name)}</td>
+      <td>${esc(r.room_number)}</td>
+      <td>${r.area_sqm || '—'}</td>
+      <td>${r.ev_exit_distance_m}</td>
+      <td>${r.floor}</td>
+    </tr>`).join('');
+  if (rooms.length > 30) {
+    tbody.innerHTML += `<tr><td colspan="5" style="text-align:center;color:#64748b;">他 ${rooms.length - 30} 件...</td></tr>`;
+  }
+  document.getElementById('dxf-modal').classList.add('open');
+  setStatus(`DXF解析完了 — ${rooms.length}部屋を検出。プレビューを確認してください。`, 'info');
+}
+
+function closeDXFModal() {
+  document.getElementById('dxf-modal').classList.remove('open');
+  _dxfParsedRooms = [];
+}
+
+function applyDXFData() {
+  if (!_dxfParsedRooms.length) return;
+  document.getElementById('grid-body').innerHTML = '';
+  rowId = 0;
+  _dxfParsedRooms.forEach(r => addRow(r));
+  closeDXFModal();
+  setStatus(`DXFインポート完了 — ${_dxfParsedRooms.length}部屋を適用しました。保存してください。`, 'ok');
+}
+
+// ── AR計測起動（判断③A案確定: Android Chrome WebXR） ──────────
+function launchAR() {
+  const arUrl = 'ar_measure.html';
+  // WebXR対応チェック
+  if (navigator.xr) {
+    navigator.xr.isSessionSupported('immersive-ar').then(supported => {
+      if (supported) {
+        window.open(arUrl, '_blank');
+      } else {
+        // PWAフォールバック導線
+        showARFallback();
+      }
+    }).catch(() => showARFallback());
+  } else {
+    showARFallback();
+  }
+}
+
+function showARFallback() {
+  const ok = confirm(
+    'このブラウザはAR（WebXR）に対応していません。\n\n' +
+    '対応環境: Android Chrome + ARCore\n\n' +
+    'PWA版を別タブで開きますか？'
+  );
+  if (ok) window.open('pwa_qr.html', '_blank');
+}
+
+// ── ユーティリティ ───────────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = type;
+}
+function showToast() {
+  const t = document.getElementById('toast');
+  t.className = 'show';
+  setTimeout(() => { t.className = ''; }, 2600);
+}
+
+// ── PWA Service Worker登録 ──────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ── 初期化 ───────────────────────────────────────────────────────
+(async () => {
+  await openDB();
+  await loadFromIndexedDB();
+  if (document.getElementById('grid-body').children.length === 0) {
+    addRow({ building_name: 'A棟', room_number: '0101', area_sqm: 25, rent_jpy: 80000, ev_exit_distance_m: 15, floor: 1 });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NiceEze リサーチダッシュボード</title>
+  <style>
+    :root {
+      --navy:   #1A2B4C;
+      --amber:  #E8A020;
+      --bg:     #F5F7FA;
+      --white:  #FFFFFF;
+      --border: #D1D9E6;
+      --green:  #22863A;
+      --green-bg: #DCFFE4;
+      --text:   #1A2B4C;
+      --muted:  #6B7A99;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo-mark {
+      width: 32px; height: 32px;
+      background: var(--amber);
+      border-radius: 6px;
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 14px; color: var(--navy);
+    }
+    header h1 { font-size: 16px; font-weight: 700; letter-spacing: .02em; }
+    header .badge {
+      margin-left: auto;
+      font-size: 10px; font-weight: 600;
+      background: rgba(232,160,32,.2);
+      color: var(--amber);
+      border: 1px solid var(--amber);
+      border-radius: 4px;
+      padding: 2px 8px;
+      letter-spacing: .04em;
+    }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex;
+      background: var(--white);
+      border-bottom: 2px solid var(--border);
+      padding: 0 20px;
+    }
+    .tab-btn {
+      padding: 12px 20px;
+      font-size: 13px; font-weight: 600;
+      color: var(--muted);
+      background: none; border: none; cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn.active {
+      color: var(--navy);
+      border-bottom-color: var(--amber);
+    }
+    .tab-btn:hover:not(.active) { color: var(--navy); }
+
+    /* ── Panels ── */
+    .panel { display: none; padding: 20px; }
+    .panel.active { display: block; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 13px; font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title .tag {
+      font-size: 10px; font-weight: 600;
+      background: var(--navy); color: var(--white);
+      border-radius: 4px; padding: 2px 7px;
+      letter-spacing: .04em;
+    }
+
+    /* ── Search bar ── */
+    .search-row {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .search-row input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+    }
+    .search-row input:focus { border-color: var(--navy); }
+    .btn-primary {
+      padding: 9px 18px;
+      background: var(--navy); color: var(--white);
+      border: none; border-radius: 7px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary:hover { background: #253d6e; }
+    .btn-primary:active { background: #162038; }
+
+    /* ── Price table ── */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: 13px;
+      min-width: 560px;
+    }
+    thead th {
+      background: var(--navy);
+      color: var(--white);
+      padding: 9px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    thead th.num {
+      text-align: right;
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:hover { background: #f0f4fa; }
+    tbody td { padding: 9px 12px; }
+    tbody td.num {
+      text-align: right;
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+    }
+    tr.cheapest td { background: #FFF8EC; }
+    tr.cheapest td.supplier-name { color: var(--amber); font-weight: 700; }
+    .amber-badge {
+      display: inline-block;
+      background: var(--amber); color: var(--navy);
+      font-size: 10px; font-weight: 700;
+      border-radius: 4px; padding: 1px 6px;
+      margin-left: 4px;
+    }
+    .no-result {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 32px 0;
+    }
+
+    /* ── Category chips ── */
+    .chips {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-bottom: 14px;
+    }
+    .chip {
+      padding: 6px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      background: var(--white);
+      color: var(--text);
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .chip.selected {
+      background: var(--navy); color: var(--white);
+      border-color: var(--navy);
+    }
+
+    /* ── Mode buttons ── */
+    .mode-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .mode-btn {
+      flex: 1; min-width: 90px;
+      padding: 8px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      background: var(--white);
+      color: var(--muted);
+      transition: all .15s;
+    }
+    .mode-btn.active {
+      background: var(--amber); color: var(--navy);
+      border-color: var(--amber);
+    }
+
+    /* ── Trend table ── */
+    .score-cell {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+      font-weight: 600;
+    }
+    .badge-green {
+      display: inline-block;
+      background: var(--green-bg);
+      color: var(--green);
+      border: 1px solid #b7eec7;
+      border-radius: 4px;
+      font-size: 10px; font-weight: 700;
+      padding: 1px 6px;
+    }
+
+    /* ── TODO card ── */
+    .todo-section { margin-top: 20px; }
+    .todo-section h3 {
+      font-size: 13px; font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .todo-card {
+      background: #FFF8EC;
+      border: 1.5px solid var(--amber);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .todo-card .todo-title {
+      font-weight: 700; color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .todo-card .todo-meta {
+      font-size: 11px; color: var(--muted);
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+    }
+
+    /* ── Footer cache indicator ── */
+    .cache-bar {
+      text-align: center;
+      font-size: 10px; color: var(--muted);
+      padding: 12px 0 20px;
+    }
+
+    /* ── Responsive ── */
+    @media (min-width: 768px) {
+      .panel { padding: 24px 32px; }
+      .search-row input { font-size: 15px; }
+      table { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">N</div>
+  <h1>NiceEze リサーチダッシュボード</h1>
+  <span class="badge">MVP v1.0</span>
+</header>
+
+<!-- Tab bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('res-a01', this)">
+    価格マトリクス (RES-A01)
+  </button>
+  <button class="tab-btn" onclick="switchTab('res-a02', this)">
+    トレンド分析 (RES-A02)
+  </button>
+</div>
+
+<!-- ===== PANEL A: RES-A01 価格マトリクス ===== -->
+<div id="res-a01" class="panel active">
+  <div class="card">
+    <div class="card-title">
+      <span class="tag">RES-A01</span>
+      8モール価格比較マトリクス
+    </div>
+    <div class="search-row">
+      <input id="a01-kw" type="search" placeholder="商品名・JANコードで検索…" value="プロテイン 1kg">
+      <button class="btn-primary" onclick="runPriceSearch()">検索</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table id="price-table">
+        <thead>
+          <tr>
+            <th>モール</th>
+            <th class="num">1ケース価格 (円)</th>
+            <th class="num">1個あたり単価 (円)</th>
+            <th class="num">入数</th>
+            <th>在庫状況</th>
+          </tr>
+        </thead>
+        <tbody id="price-tbody">
+        </tbody>
+      </table>
+    </div>
+    <p id="price-no-result" class="no-result" style="display:none">
+      該当する商品が見つかりませんでした。キーワードを変えてお試しください。
+    </p>
+  </div>
+</div>
+
+<!-- ===== PANEL B: RES-A02 トレンド分析 ===== -->
+<div id="res-a02" class="panel">
+  <div class="card">
+    <div class="card-title">
+      <span class="tag">RES-A02</span>
+      トレンドスコア分析
+    </div>
+
+    <!-- Category chips -->
+    <div class="chips" id="category-chips"></div>
+
+    <!-- Keyword input -->
+    <div class="search-row" style="margin-bottom:12px">
+      <input id="a02-kw" type="search" placeholder="キーワード絞り込み（任意）">
+    </div>
+
+    <!-- Mode buttons -->
+    <div class="mode-row" id="mode-row">
+      <button class="mode-btn active" data-mode="bestseller" onclick="selectMode(this)">売れ筋</button>
+      <button class="mode-btn" data-mode="growth" onclick="selectMode(this)">急成長</button>
+      <button class="mode-btn" data-mode="staple" onclick="selectMode(this)">定番残存</button>
+    </div>
+
+    <button class="btn-primary" style="width:100%" onclick="runTrendSearch()">分析実行</button>
+  </div>
+
+  <!-- Trend results -->
+  <div class="card" id="trend-result-card" style="display:none">
+    <div class="card-title" id="trend-result-title">分析結果</div>
+    <div class="table-wrap">
+      <table id="trend-table">
+        <thead>
+          <tr>
+            <th>商品・キーワード</th>
+            <th>カテゴリ</th>
+            <th class="num">S_retentionスコア</th>
+            <th class="num">月間検索数 (推定)</th>
+            <th>評価</th>
+          </tr>
+        </thead>
+        <tbody id="trend-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TODO cards for score >= 0.8 -->
+  <div class="todo-section" id="todo-section" style="display:none">
+    <h3>
+      <span style="font-size:16px">&#9888;</span>
+      優先調査 TODOカード (S_retention ≥ 0.80)
+    </h3>
+    <div id="todo-cards"></div>
+  </div>
+</div>
+
+<div class="cache-bar" id="cache-bar">IndexedDB: niceeze_cache_v142 — 初期化中...</div>
+
+<script>
+/* ============================================================
+   NiceEze リサーチダッシュボード — MVP inline JS
+   IndexedDB: niceeze_cache_v142 (version 142)
+   No external dependencies.
+   ============================================================ */
+
+'use strict';
+
+// ── IndexedDB setup ──────────────────────────────────────────
+const DB_NAME    = 'niceeze_cache_v142';
+const DB_VERSION = 142;
+let   _db        = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('price_cache')) {
+        db.createObjectStore('price_cache', { keyPath: 'keyword' });
+      }
+      if (!db.objectStoreNames.contains('trend_cache')) {
+        db.createObjectStore('trend_cache', { keyPath: 'cacheKey' });
+      }
+    };
+    req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((resolve, reject) => {
+    if (!_db) return resolve(null);
+    const tx = _db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = e => resolve(e.target.result || null);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbPut(store, value) {
+  return new Promise((resolve, reject) => {
+    if (!_db) return resolve();
+    const tx = _db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(value);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Tab switching ────────────────────────────────────────────
+function switchTab(panelId, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── RES-A01 Mock data ────────────────────────────────────────
+const PRICE_MOCK = {
+  'プロテイン 1kg': [
+    { mall:'Amazon',       case_price:3280, qty:1, stock:'在庫あり' },
+    { mall:'楽天市場',      case_price:3480, qty:1, stock:'在庫あり' },
+    { mall:'Yahoo!',        case_price:3350, qty:1, stock:'在庫あり' },
+    { mall:'au PAY',        case_price:3520, qty:1, stock:'残りわずか' },
+    { mall:'Qoo10',         case_price:3190, qty:1, stock:'在庫あり' },
+    { mall:'ヨドバシ',      case_price:3299, qty:1, stock:'在庫あり' },
+    { mall:'ビックカメラ',  case_price:3450, qty:1, stock:'取寄せ' },
+    { mall:'ヤマダ電機',    case_price:3380, qty:1, stock:'在庫あり' },
+  ],
+  'ミネラルウォーター 2L': [
+    { mall:'Amazon',       case_price:1980, qty:12, stock:'在庫あり' },
+    { mall:'楽天市場',      case_price:2100, qty:12, stock:'在庫あり' },
+    { mall:'Yahoo!',        case_price:1950, qty:12, stock:'在庫あり' },
+    { mall:'au PAY',        case_price:2080, qty:12, stock:'在庫あり' },
+    { mall:'Qoo10',         case_price:1890, qty:12, stock:'在庫あり' },
+    { mall:'ヨドバシ',      case_price:2050, qty:12, stock:'在庫あり' },
+    { mall:'ビックカメラ',  case_price:2200, qty:12, stock:'取寄せ' },
+    { mall:'ヤマダ電機',    case_price:2150, qty:12, stock:'在庫あり' },
+  ],
+  'マスク 50枚': [
+    { mall:'Amazon',       case_price:980,  qty:1,  stock:'在庫あり' },
+    { mall:'楽天市場',      case_price:1050, qty:1,  stock:'在庫あり' },
+    { mall:'Yahoo!',        case_price:990,  qty:1,  stock:'在庫あり' },
+    { mall:'au PAY',        case_price:1080, qty:1,  stock:'在庫あり' },
+    { mall:'Qoo10',         case_price:920,  qty:1,  stock:'在庫あり' },
+    { mall:'ヨドバシ',      case_price:970,  qty:1,  stock:'在庫あり' },
+    { mall:'ビックカメラ',  case_price:1020, qty:1,  stock:'在庫あり' },
+    { mall:'ヤマダ電機',    case_price:1000, qty:1,  stock:'在庫あり' },
+  ],
+};
+
+const SUPPLIERS_ORDER = ['Amazon','楽天市場','Yahoo!','au PAY','Qoo10','ヨドバシ','ビックカメラ','ヤマダ電機'];
+
+function findMockPrices(keyword) {
+  // Exact match first
+  if (PRICE_MOCK[keyword]) return PRICE_MOCK[keyword];
+  // Fuzzy: check if any mock key is contained in keyword or vice versa
+  for (const k of Object.keys(PRICE_MOCK)) {
+    if (keyword.includes(k) || k.includes(keyword)) return PRICE_MOCK[k];
+  }
+  return null;
+}
+
+function generateFallbackPrices(keyword) {
+  // Generate plausible prices based on keyword hash for consistency
+  let h = 0;
+  for (let i = 0; i < keyword.length; i++) h = (h * 31 + keyword.charCodeAt(i)) & 0xffff;
+  const base = 500 + (h % 4500);
+  const qty  = [1, 6, 12, 24][(h >> 4) % 4];
+  return SUPPLIERS_ORDER.map((mall, i) => ({
+    mall,
+    case_price: base + Math.round((Math.sin(i * 1.3 + h * 0.01) * 0.15 + Math.random() * 0.05) * base),
+    qty,
+    stock: i === 6 ? '取寄せ' : (Math.random() < 0.1 ? '残りわずか' : '在庫あり'),
+  }));
+}
+
+async function runPriceSearch() {
+  const kw = document.getElementById('a01-kw').value.trim();
+  if (!kw) return;
+
+  const cacheKey = kw;
+  let rows = null;
+
+  // Try IndexedDB cache first
+  const cached = await dbGet('price_cache', cacheKey);
+  if (cached && (Date.now() - cached.ts < 3600000)) {
+    rows = cached.rows;
+  } else {
+    rows = findMockPrices(kw) || generateFallbackPrices(kw);
+    await dbPut('price_cache', { keyword: cacheKey, rows, ts: Date.now() });
+  }
+
+  renderPriceTable(rows, kw);
+}
+
+function renderPriceTable(rows, keyword) {
+  const tbody = document.getElementById('price-tbody');
+  const noResult = document.getElementById('price-no-result');
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '';
+    noResult.style.display = '';
+    return;
+  }
+  noResult.style.display = 'none';
+
+  // Find cheapest
+  const minPrice = Math.min(...rows.map(r => r.case_price));
+
+  tbody.innerHTML = rows.map(r => {
+    const isCheapest = r.case_price === minPrice;
+    const unitPrice  = r.qty > 0 ? Math.round(r.case_price / r.qty) : r.case_price;
+    return `<tr class="${isCheapest ? 'cheapest' : ''}">
+      <td class="supplier-name">${esc(r.mall)}${isCheapest ? '<span class="amber-badge">最安</span>' : ''}</td>
+      <td class="num">${r.case_price.toLocaleString('ja-JP')}</td>
+      <td class="num">${unitPrice.toLocaleString('ja-JP')}</td>
+      <td class="num">${r.qty}</td>
+      <td>${esc(r.stock)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── RES-A02 Category chips ───────────────────────────────────
+const CATEGORIES = [
+  '食品・飲料','日用品・消耗品','家電・ガジェット','衣料・ファッション',
+  '美容・健康','ペット用品','スポーツ・アウトドア','ホーム・インテリア',
+];
+
+let selectedCategory = CATEGORIES[0];
+let selectedMode     = 'bestseller';
+
+function initChips() {
+  const container = document.getElementById('category-chips');
+  container.innerHTML = CATEGORIES.map(c =>
+    `<button class="chip${c === selectedCategory ? ' selected' : ''}"
+      onclick="selectChip(this,'${c}')">${c}</button>`
+  ).join('');
+}
+
+function selectChip(el, cat) {
+  selectedCategory = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectMode(el) {
+  selectedMode = el.dataset.mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── RES-A02 Mock trend data ──────────────────────────────────
+const TREND_DATA = {
+  '食品・飲料': {
+    bestseller: [
+      { keyword:'機能性ヨーグルト', score:0.91, monthly:82000 },
+      { keyword:'オーツミルク',     score:0.87, monthly:67000 },
+      { keyword:'プロテインバー',   score:0.84, monthly:74000 },
+      { keyword:'コールドプレスジュース', score:0.76, monthly:41000 },
+      { keyword:'国産はちみつ',    score:0.68, monthly:35000 },
+    ],
+    growth: [
+      { keyword:'植物性プロテイン', score:0.93, monthly:55000 },
+      { keyword:'ノンアル炭酸飲料', score:0.88, monthly:48000 },
+      { keyword:'グルテンフリーパスタ', score:0.81, monthly:29000 },
+      { keyword:'発酵食品セット',  score:0.72, monthly:22000 },
+      { keyword:'オーガニックコーヒー', score:0.65, monthly:31000 },
+    ],
+    staple: [
+      { keyword:'納豆',            score:0.95, monthly:210000 },
+      { keyword:'サラダチキン',    score:0.89, monthly:95000 },
+      { keyword:'カップラーメン',  score:0.86, monthly:180000 },
+      { keyword:'緑茶 ペットボトル', score:0.82, monthly:140000 },
+      { keyword:'レトルトカレー',  score:0.77, monthly:88000 },
+    ],
+  },
+  '日用品・消耗品': {
+    bestseller: [
+      { keyword:'フロスピック',    score:0.88, monthly:62000 },
+      { keyword:'ドライシャンプー', score:0.82, monthly:43000 },
+      { keyword:'クエン酸 掃除',   score:0.79, monthly:38000 },
+      { keyword:'詰め替えパック',  score:0.71, monthly:55000 },
+      { keyword:'ゴミ袋 45L',      score:0.66, monthly:72000 },
+    ],
+    growth: [
+      { keyword:'固形シャンプー',  score:0.91, monthly:34000 },
+      { keyword:'竹製歯ブラシ',    score:0.85, monthly:28000 },
+      { keyword:'重曹 大容量',     score:0.78, monthly:41000 },
+      { keyword:'マスク 個包装',   score:0.73, monthly:89000 },
+      { keyword:'詰め替えボトル',  score:0.62, monthly:25000 },
+    ],
+    staple: [
+      { keyword:'ティッシュ 5箱',  score:0.96, monthly:145000 },
+      { keyword:'トイレットペーパー', score:0.94, monthly:132000 },
+      { keyword:'洗濯洗剤',        score:0.90, monthly:118000 },
+      { keyword:'台所用洗剤',      score:0.87, monthly:95000 },
+      { keyword:'ラップ',          score:0.83, monthly:77000 },
+    ],
+  },
+  '家電・ガジェット': {
+    bestseller: [
+      { keyword:'ワイヤレスイヤホン', score:0.89, monthly:98000 },
+      { keyword:'モバイルバッテリー', score:0.85, monthly:76000 },
+      { keyword:'スマートウォッチ', score:0.82, monthly:65000 },
+      { keyword:'USBハブ Type-C',   score:0.74, monthly:52000 },
+      { keyword:'空気清浄機',       score:0.68, monthly:44000 },
+    ],
+    growth: [
+      { keyword:'ミニプロジェクター', score:0.92, monthly:31000 },
+      { keyword:'ChatGPT 対応デバイス', score:0.88, monthly:27000 },
+      { keyword:'スマートロック',   score:0.81, monthly:18000 },
+      { keyword:'ロボット掃除機',   score:0.77, monthly:42000 },
+      { keyword:'電動歯ブラシ',     score:0.69, monthly:38000 },
+    ],
+    staple: [
+      { keyword:'充電ケーブル USB-C', score:0.93, monthly:195000 },
+      { keyword:'スマホケース',     score:0.91, monthly:165000 },
+      { keyword:'保護フィルム',     score:0.88, monthly:142000 },
+      { keyword:'HDMIケーブル',     score:0.84, monthly:88000 },
+      { keyword:'電池 単3',         score:0.80, monthly:112000 },
+    ],
+  },
+  '衣料・ファッション': {
+    bestseller: [
+      { keyword:'ドライTシャツ',   score:0.86, monthly:54000 },
+      { keyword:'撥水パーカー',    score:0.80, monthly:38000 },
+      { keyword:'インナーウェア',  score:0.77, monthly:47000 },
+      { keyword:'スニーカー 白',   score:0.71, monthly:63000 },
+      { keyword:'ネックウォーマー', score:0.64, monthly:29000 },
+    ],
+    growth: [
+      { keyword:'ジェンダーレスファッション', score:0.90, monthly:22000 },
+      { keyword:'サステナブルデニム', score:0.83, monthly:18000 },
+      { keyword:'ミニマリスト コーデ', score:0.78, monthly:31000 },
+      { keyword:'Y2Kファッション', score:0.72, monthly:25000 },
+      { keyword:'韓国系ファッション', score:0.67, monthly:42000 },
+    ],
+    staple: [
+      { keyword:'ユニクロ ヒートテック', score:0.95, monthly:220000 },
+      { keyword:'カーゴパンツ',    score:0.89, monthly:78000 },
+      { keyword:'ビジネスソックス', score:0.86, monthly:68000 },
+      { keyword:'白シャツ メンズ', score:0.82, monthly:59000 },
+      { keyword:'レギンス',        score:0.79, monthly:52000 },
+    ],
+  },
+  '美容・健康': {
+    bestseller: [
+      { keyword:'ヒアルロン酸 美容液', score:0.90, monthly:88000 },
+      { keyword:'日焼け止め SPF50', score:0.86, monthly:75000 },
+      { keyword:'マルチビタミン',  score:0.83, monthly:62000 },
+      { keyword:'ポイントリムーバー', score:0.75, monthly:41000 },
+      { keyword:'ヘアオイル',      score:0.70, monthly:56000 },
+    ],
+    growth: [
+      { keyword:'ナイアシンアミド美容液', score:0.94, monthly:48000 },
+      { keyword:'LED美顔器',       score:0.87, monthly:35000 },
+      { keyword:'腸活サプリ',      score:0.82, monthly:42000 },
+      { keyword:'グルタチオン',    score:0.78, monthly:28000 },
+      { keyword:'頭皮スキンケア',  score:0.66, monthly:22000 },
+    ],
+    staple: [
+      { keyword:'コットン パフ',   score:0.92, monthly:115000 },
+      { keyword:'ビタミンC 1000mg', score:0.90, monthly:98000 },
+      { keyword:'保湿クリーム',    score:0.88, monthly:85000 },
+      { keyword:'クレンジングオイル', score:0.85, monthly:72000 },
+      { keyword:'シャンプー トリートメント セット', score:0.81, monthly:66000 },
+    ],
+  },
+  'ペット用品': {
+    bestseller: [
+      { keyword:'猫 自動給餌器',   score:0.88, monthly:32000 },
+      { keyword:'犬 ハーネス',     score:0.83, monthly:28000 },
+      { keyword:'ペット消臭スプレー', score:0.79, monthly:41000 },
+      { keyword:'猫砂 固まる',     score:0.74, monthly:58000 },
+      { keyword:'ペットシーツ 大容量', score:0.68, monthly:62000 },
+    ],
+    growth: [
+      { keyword:'ペット GPS トラッカー', score:0.91, monthly:18000 },
+      { keyword:'グレインフリー ドッグフード', score:0.85, monthly:24000 },
+      { keyword:'猫 自動トイレ',   score:0.82, monthly:15000 },
+      { keyword:'ペット 保険',     score:0.76, monthly:35000 },
+      { keyword:'犬 ドライブボックス', score:0.63, monthly:11000 },
+    ],
+    staple: [
+      { keyword:'ドッグフード 大袋', score:0.94, monthly:95000 },
+      { keyword:'キャットフード',  score:0.92, monthly:88000 },
+      { keyword:'猫じゃらし',      score:0.87, monthly:45000 },
+      { keyword:'犬 リード',       score:0.84, monthly:38000 },
+      { keyword:'ペット ブラシ',   score:0.80, monthly:32000 },
+    ],
+  },
+  'スポーツ・アウトドア': {
+    bestseller: [
+      { keyword:'ヨガマット',      score:0.87, monthly:52000 },
+      { keyword:'トレーニングベンチ', score:0.82, monthly:28000 },
+      { keyword:'テントポール',    score:0.76, monthly:18000 },
+      { keyword:'スポーツドリンク 粉末', score:0.71, monthly:34000 },
+      { keyword:'ランニングシューズ', score:0.68, monthly:61000 },
+    ],
+    growth: [
+      { keyword:'ピクニックマット', score:0.89, monthly:22000 },
+      { keyword:'ソロキャンプ 焚き火台', score:0.86, monthly:16000 },
+      { keyword:'バックパック 登山', score:0.80, monthly:19000 },
+      { keyword:'EMS トレーニング', score:0.75, monthly:14000 },
+      { keyword:'スポーツサングラス', score:0.64, monthly:21000 },
+    ],
+    staple: [
+      { keyword:'プロテイン ホエイ', score:0.96, monthly:145000 },
+      { keyword:'スポーツウォーター ボトル', score:0.91, monthly:72000 },
+      { keyword:'ゴルフグローブ',  score:0.86, monthly:48000 },
+      { keyword:'サッカーボール',  score:0.83, monthly:38000 },
+      { keyword:'スポーツタオル',  score:0.78, monthly:35000 },
+    ],
+  },
+  'ホーム・インテリア': {
+    bestseller: [
+      { keyword:'ディフューザー アロマ', score:0.88, monthly:44000 },
+      { keyword:'観葉植物 インドアグリーン', score:0.84, monthly:38000 },
+      { keyword:'壁掛け時計',      score:0.78, monthly:32000 },
+      { keyword:'収納ボックス 積み重ね', score:0.73, monthly:55000 },
+      { keyword:'間接照明 LED',    score:0.67, monthly:29000 },
+    ],
+    growth: [
+      { keyword:'スマートシーリングライト', score:0.92, monthly:24000 },
+      { keyword:'防音マット',      score:0.86, monthly:18000 },
+      { keyword:'飾り棚 ウォールシェルフ', score:0.81, monthly:21000 },
+      { keyword:'竹製 収納グッズ', score:0.74, monthly:15000 },
+      { keyword:'デスク 昇降式',   score:0.69, monthly:17000 },
+    ],
+    staple: [
+      { keyword:'突っ張り棒 強力', score:0.95, monthly:108000 },
+      { keyword:'カーテン 遮光',   score:0.91, monthly:88000 },
+      { keyword:'フロアランプ',    score:0.87, monthly:52000 },
+      { keyword:'収納ケース 衣類', score:0.84, monthly:65000 },
+      { keyword:'ラグ 洗える',     score:0.80, monthly:48000 },
+    ],
+  },
+};
+
+async function runTrendSearch() {
+  const kw   = document.getElementById('a02-kw').value.trim().toLowerCase();
+  const cat  = selectedCategory;
+  const mode = selectedMode;
+  const cacheKey = `${cat}::${mode}::${kw}`;
+
+  let rows = null;
+  const cached = await dbGet('trend_cache', cacheKey);
+  if (cached && (Date.now() - cached.ts < 3600000)) {
+    rows = cached.rows;
+  } else {
+    const base = (TREND_DATA[cat] || {})[mode] || [];
+    rows = kw ? base.filter(r => r.keyword.toLowerCase().includes(kw)) : base;
+    if (rows.length === 0 && kw) {
+      // Generate a single plausible row for unmatched keyword
+      let h = 0;
+      for (let i = 0; i < kw.length; i++) h = (h * 31 + kw.charCodeAt(i)) & 0xffff;
+      rows = [{ keyword: kw, score: parseFloat((0.50 + (h % 450) / 1000).toFixed(2)), monthly: 5000 + (h % 40000) }];
+    }
+    await dbPut('trend_cache', { cacheKey, rows, ts: Date.now() });
+  }
+
+  renderTrendTable(rows, cat, mode);
+}
+
+const MODE_LABELS = { bestseller:'売れ筋', growth:'急成長', staple:'定番残存' };
+
+function renderTrendTable(rows, cat, mode) {
+  const card  = document.getElementById('trend-result-card');
+  const title = document.getElementById('trend-result-title');
+  const tbody = document.getElementById('trend-tbody');
+  const todoSection = document.getElementById('todo-section');
+  const todoCards   = document.getElementById('todo-cards');
+
+  card.style.display = '';
+  title.innerHTML = `<span class="tag">RES-A02</span> ${esc(cat)} — ${esc(MODE_LABELS[mode]||mode)}`;
+
+  const sorted = [...rows].sort((a, b) => b.score - a.score);
+
+  tbody.innerHTML = sorted.map(r => {
+    const isHigh = r.score >= 0.6;
+    const scoreFmt = r.score.toFixed(2);
+    const badge = isHigh ? `<span class="badge-green">HIGH</span>` : '';
+    return `<tr>
+      <td>${esc(r.keyword)}</td>
+      <td>${esc(cat)}</td>
+      <td class="num score-cell">${scoreFmt} ${badge}</td>
+      <td class="num">${r.monthly.toLocaleString('ja-JP')}</td>
+      <td>${isHigh ? '&#9989; 推奨' : '&#9711; 様子見'}</td>
+    </tr>`;
+  }).join('');
+
+  // TODO cards for score >= 0.8
+  const highPriority = sorted.filter(r => r.score >= 0.8);
+  if (highPriority.length > 0) {
+    todoSection.style.display = '';
+    todoCards.innerHTML = highPriority.map(r => `
+      <div class="todo-card">
+        <div class="todo-title">&#128204; ${esc(r.keyword)}</div>
+        <div style="font-size:12px;color:#444;margin:4px 0 6px">
+          カテゴリ: ${esc(cat)} &nbsp;|&nbsp; モード: ${esc(MODE_LABELS[mode]||mode)}
+        </div>
+        <div class="todo-meta">
+          S_retention: ${r.score.toFixed(2)} &nbsp;&#8226;&nbsp; 月間検索数(推定): ${r.monthly.toLocaleString('ja-JP')}
+        </div>
+      </div>
+    `).join('');
+  } else {
+    todoSection.style.display = 'none';
+    todoCards.innerHTML = '';
+  }
+}
+
+// ── Utility ──────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── Bootstrap ────────────────────────────────────────────────
+(async () => {
+  initChips();
+  try {
+    await openDB();
+    document.getElementById('cache-bar').textContent =
+      `IndexedDB: ${DB_NAME} (v${DB_VERSION}) — キャッシュ有効`;
+  } catch (e) {
+    document.getElementById('cache-bar').textContent =
+      `IndexedDB: 利用不可 (${e.message}) — メモリモードで動作中`;
+  }
+  // Auto-run initial price search
+  await runPriceSearch();
+})();
+</script>
+</body>
+</html>

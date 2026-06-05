@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RES-A02 — トレンド予測 | NiceEze</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #f0f4f8; color: #1e293b; }
+
+  header {
+    background: #1a3a5c; color: white; padding: 12px 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { font-size: 16px; font-weight: 700; }
+  header span { font-size: 11px; color: #bfd7ed; }
+
+  .layout { max-width: 1100px; margin: 16px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* 上部: カテゴリ選択 + キーワード */
+  .section-top {
+    background: white; border-radius: 8px; padding: 16px;
+    border: 1px solid #cbd5e1;
+  }
+  .section-top h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 12px; }
+  .cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .cat-chip {
+    border: 1px solid #cbd5e1; border-radius: 20px; padding: 5px 14px;
+    font-size: 12px; cursor: pointer; transition: all 0.15s; background: white;
+  }
+  .cat-chip.active { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+  .cat-chip:hover:not(.active) { border-color: #1a3a5c; color: #1a3a5c; }
+  .kw-row { display: flex; gap: 8px; align-items: center; }
+  .kw-row input {
+    border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px;
+    font-size: 13px; width: 280px;
+  }
+  .kw-row input:focus { outline: none; border-color: #1a3a5c; }
+  .btn-analyze {
+    background: #1a3a5c; color: white; border: none; border-radius: 6px;
+    padding: 8px 20px; font-size: 13px; cursor: pointer; font-weight: 600;
+  }
+  .btn-analyze:hover { background: #2a5a8c; }
+
+  /* 中央: 3モード切替 */
+  .section-mid {
+    background: white; border-radius: 8px; padding: 16px;
+    border: 1px solid #cbd5e1;
+  }
+  .mode-tabs { display: flex; gap: 0; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
+  .mode-tab {
+    flex: 1; padding: 8px 10px; font-size: 12px; font-weight: 600;
+    cursor: pointer; text-align: center; background: #f8fafc; border: none;
+    transition: all 0.15s;
+  }
+  .mode-tab.active { background: #1a3a5c; color: white; }
+  .mode-tab:not(.active):hover { background: #e2e8f0; }
+
+  .trend-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .trend-table th {
+    background: #1a3a5c; color: white; padding: 8px 10px; text-align: left; white-space: nowrap;
+  }
+  .trend-table th.num-col { text-align: right; }
+  .trend-table td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+  .trend-table tr:hover td { background: #f8fafc; }
+  /* font-mono tabular-nums tracking-tight — LAYOUT_MASTER.md 1-1 */
+  .num { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; text-align: right; }
+  .score-bar-wrap { width: 100px; display: inline-block; vertical-align: middle; }
+  .score-bar { height: 6px; border-radius: 3px; background: #e2e8f0; position: relative; display: inline-block; width: 100%; }
+  .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .score-bar-fill.green { background: #16a34a; }
+  .score-bar-fill.orange { background: #f5a623; }
+  .score-bar-fill.red { background: #dc2626; }
+  .badge-rec {
+    display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    white-space: nowrap;
+  }
+  .rec-growth { background: #dbeafe; color: #1d4ed8; }
+  .rec-staple { background: #dcfce7; color: #15803d; }
+  .rec-sell   { background: #fef9c3; color: #854d0e; }
+  .rec-down   { background: #fee2e2; color: #b91c1c; }
+  .rec-watch  { background: #f1f5f9; color: #475569; }
+  .staple-alert { background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #15803d; margin-top: 10px; }
+
+  /* 下部: TODOカード */
+  .section-bot {
+    background: white; border-radius: 8px; padding: 16px;
+    border: 1px solid #cbd5e1;
+  }
+  .section-bot h2 { font-size: 13px; font-weight: 700; color: #1a3a5c; margin-bottom: 12px; }
+  .todo-grid { display: flex; flex-direction: column; gap: 8px; }
+  .todo-card {
+    border: 1px solid #86efac; border-radius: 6px; padding: 10px 14px;
+    background: #f0fdf4; display: flex; align-items: center; justify-content: space-between;
+  }
+  .todo-card .tc-text { font-size: 12px; color: #15803d; font-weight: 600; }
+  .todo-card .tc-kw { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .btn-copy {
+    background: white; border: 1px solid #cbd5e1; border-radius: 4px;
+    padding: 4px 10px; font-size: 11px; cursor: pointer;
+  }
+  .btn-copy:hover { background: #f8fafc; }
+  .empty { text-align: center; color: #94a3b8; padding: 30px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>RES-A02 — トレンド予測（売れ筋・急成長・定番残存スコア）</h1>
+    <span>Ver 1.0 | Research部 特急MVP | S_retention ≥ 0.6 → 定番判定</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- 上部: カテゴリ + キーワード -->
+  <div class="section-top">
+    <h2>📂 大カテゴリ選択</h2>
+    <div class="cat-chips" id="catChips">
+      <div class="cat-chip active" data-cat="食品・飲料" onclick="selectCat(this)">食品・飲料</div>
+      <div class="cat-chip" data-cat="日用品・消耗品" onclick="selectCat(this)">日用品・消耗品</div>
+      <div class="cat-chip" data-cat="家電・ガジェット" onclick="selectCat(this)">家電・ガジェット</div>
+      <div class="cat-chip" data-cat="衣料・ファッション" onclick="selectCat(this)">衣料・ファッション</div>
+      <div class="cat-chip" data-cat="美容・健康" onclick="selectCat(this)">美容・健康</div>
+      <div class="cat-chip" data-cat="ペット用品" onclick="selectCat(this)">ペット用品</div>
+      <div class="cat-chip" data-cat="スポーツ・アウトドア" onclick="selectCat(this)">スポーツ・アウトドア</div>
+      <div class="cat-chip" data-cat="ホーム・インテリア" onclick="selectCat(this)">ホーム・インテリア</div>
+    </div>
+    <div class="kw-row">
+      <input type="text" id="kwInput" placeholder="直接キーワード入力（カテゴリ空欄対応）" />
+      <button class="btn-analyze" onclick="runAnalysis()">分析</button>
+    </div>
+  </div>
+
+  <!-- 中央: 3モード -->
+  <div class="section-mid">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-bestseller" onclick="switchMode('bestseller')">売れ筋上位10品</button>
+      <button class="mode-tab" id="tab-growth" onclick="switchMode('growth')">急成長上位10品</button>
+      <button class="mode-tab" id="tab-staple" onclick="switchMode('staple')">定番残存予測（2週/4週）</button>
+    </div>
+    <div id="tableArea"><div class="empty">カテゴリを選択し「分析」を押してください</div></div>
+    <div class="staple-alert" id="stapleAlert" style="display:none">
+      ✅ <strong id="stapleCount">0</strong>件の定番商品を検出しました（S_retention ≥ 0.6）
+    </div>
+  </div>
+
+  <!-- 下部: TODO連動 -->
+  <div class="section-bot">
+    <h2>📋 定番仕入設定 TODOカード（S_retention ≥ 0.8 自動起票）</h2>
+    <div class="todo-grid" id="todoArea">
+      <div class="empty">分析後、定番商品が自動起票されます</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+let currentCat = '食品・飲料';
+let currentMode = 'bestseller';
+let analysisData = [];
+
+// カテゴリ別サンプルキーワード
+const CAT_KEYWORDS = {
+  '食品・飲料':     ['コカ・コーラ 500ml', 'ペットボトル水 2L', 'お茶 緑茶', 'カップラーメン', 'チョコレート 板チョコ', 'ポテトチップス', 'ビール 350ml', 'スポーツドリンク', 'コーヒー缶', 'プロテインバー'],
+  '日用品・消耗品': ['ティッシュペーパー', 'トイレットペーパー', '洗剤 液体', 'シャンプー', 'ビニール袋', '乾電池 単3', 'ラップフィルム', 'マスク 不織布', '歯ブラシ', '食器用洗剤'],
+  '家電・ガジェット':['iPhone ケース', 'USB-Cケーブル', '充電器 急速', 'イヤホン ワイヤレス', 'スマートスピーカー', 'モバイルバッテリー', 'LEDライト', 'ウェブカメラ', 'キーボード ワイヤレス', 'SSD 外付け'],
+  '衣料・ファッション':['Tシャツ 無地', 'ジーンズ スリム', 'スニーカー ホワイト', 'トートバッグ', 'キャップ', 'ソックス 5足組', 'パーカー', 'コート ウール', 'ベルト 革', 'マフラー'],
+  '美容・健康':     ['日焼け止め SPF50', '保湿クリーム', '洗顔フォーム', 'マスカラ', 'ビタミンC サプリ', 'コラーゲン ドリンク', 'シートマスク', '美容液 ヒアルロン酸', '香水 50ml', 'ハンドクリーム'],
+  'ペット用品':     ['キャットフード ドライ', 'ドッグフード', 'ペットシーツ', '猫砂', 'ペット用おもちゃ', 'リード 犬用', 'ペット用シャンプー', 'ケージ 小型犬', '爪切り ペット用', 'ペット用おやつ'],
+  'スポーツ・アウトドア':['プロテイン ホエイ', 'ヨガマット', 'ダンベル 5kg', 'ランニングシューズ', 'テント 1人用', '水筒 ステンレス', 'サイクリンググローブ', 'スポーツタオル', 'フィットネスバンド', 'バックパック 登山'],
+  'ホーム・インテリア':['LED電球 E26', '収納ボックス', 'クッションカバー', 'アロマディフューザー', '観葉植物', 'フロアランプ', '防災グッズセット', 'タオル 綿100%', 'まな板', 'フライパン 26cm'],
+};
+
+function mockHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function generateTrend(keyword, category, days = 30) {
+  const seed = mockHash(keyword + ':' + category);
+  const baseRank = 10 + (seed % 490);
+  const dir = (seed % 3 === 0) ? 1 : -1;
+  const points = [];
+  for (let i = 0; i < days; i++) {
+    const noise = ((seed * (i + 1)) % 41) - 20;
+    const rank = Math.max(1, baseRank + dir * i * 2 + noise);
+    points.push({ rank, vol: Math.max(100, Math.floor(10000 / rank) + ((seed * i) % 200) - 100) });
+  }
+  return points;
+}
+
+function growthScore(pts) {
+  if (pts.length < 7) return 0;
+  const recent = pts.slice(-7);
+  const older  = pts.length >= 14 ? pts.slice(-14, -7) : pts.slice(0, 7);
+  const avgR = recent.reduce((s, p) => s + p.rank, 0) / recent.length;
+  const avgO = older.reduce((s, p) => s + p.rank, 0) / older.length;
+  if (avgO === 0) return 0;
+  return Math.max(0, Math.min(1, (avgO - avgR) / avgO));
+}
+function bestsellerScore(pts) {
+  if (!pts.length) return 0;
+  const avg = pts.reduce((s, p) => s + p.rank, 0) / pts.length;
+  return Math.max(0, 1 - (avg - 1) / 999);
+}
+function retentionScore(pts) {
+  if (pts.length < 2) return 0;
+  const ranks = pts.map(p => p.rank);
+  const mean = ranks.reduce((s, r) => s + r, 0) / ranks.length;
+  const variance = ranks.reduce((s, r) => s + (r - mean) ** 2, 0) / ranks.length;
+  const std = Math.sqrt(variance);
+  const stability = Math.max(0, 1 - std / 50);
+  return Math.round(stability * bestsellerScore(pts) * 1000) / 1000;
+}
+function recommendation(g, b, r) {
+  if (g > 0.7 && b > 0.5) return { label: '🚀 急成長', cls: 'rec-growth' };
+  if (r >= 0.6)            return { label: '✅ 定番商品', cls: 'rec-staple' };
+  if (b > 0.7)             return { label: '⭐ 売れ筋', cls: 'rec-sell' };
+  if (g < 0.2 && b < 0.3) return { label: '⚠️ 下降', cls: 'rec-down' };
+  return                          { label: '📊 要観察', cls: 'rec-watch' };
+}
+
+function buildAnalysisData(cat) {
+  const keywords = CAT_KEYWORDS[cat] || ['サンプル商品'];
+  return keywords.map(kw => {
+    const pts = generateTrend(kw, cat);
+    const g = growthScore(pts);
+    const b = bestsellerScore(pts);
+    const r = retentionScore(pts);
+    const rec = recommendation(g, b, r);
+    return { keyword: kw, category: cat, growth: g, bestseller: b, retention: r, rec, pts };
+  });
+}
+
+function selectCat(el) {
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentCat = el.dataset.cat;
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + mode).classList.add('active');
+  if (analysisData.length) renderTable();
+}
+
+function runAnalysis() {
+  const kw = document.getElementById('kwInput').value.trim();
+  const cat = kw ? '—' : currentCat;
+  const keywords = kw ? [kw] : (CAT_KEYWORDS[currentCat] || [currentCat]);
+
+  if (kw) {
+    analysisData = [{ ...buildAnalysisData(currentCat)[0], keyword: kw }];
+  } else {
+    analysisData = buildAnalysisData(currentCat);
+  }
+  renderTable();
+  renderTodos();
+}
+
+function scoreBar(val) {
+  const pct = Math.round(val * 100);
+  const cls = pct >= 70 ? 'green' : pct >= 40 ? 'orange' : 'red';
+  return `<div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
+}
+
+function renderTable() {
+  const sorted = [...analysisData].sort((a, b) => {
+    if (currentMode === 'bestseller') return b.bestseller - a.bestseller;
+    if (currentMode === 'growth')     return b.growth - a.growth;
+    return b.retention - a.retention;
+  }).slice(0, 10);
+
+  const staples = analysisData.filter(d => d.retention >= 0.6);
+
+  let html = `<table class="trend-table"><thead><tr>
+    <th>#</th><th>キーワード</th>
+    <th class="num-col">売れ筋スコア</th>
+    <th class="num-col">急成長スコア</th>
+    <th class="num-col">残存スコア S_retention</th>
+    <th>判定</th>
+  </tr></thead><tbody>`;
+
+  sorted.forEach((d, i) => {
+    const retDisplay = d.retention.toFixed(3);
+    html += `<tr>
+      <td>${i + 1}</td>
+      <td><strong>${d.keyword}</strong></td>
+      <td class="num">${(d.bestseller * 100).toFixed(1)}% ${scoreBar(d.bestseller)}</td>
+      <td class="num">${(d.growth * 100).toFixed(1)}% ${scoreBar(d.growth)}</td>
+      <td class="num"><span style="font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-0.04em">${retDisplay}</span> ${scoreBar(d.retention)}</td>
+      <td><span class="badge-rec ${d.rec.cls}">${d.rec.label}</span></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('tableArea').innerHTML = html;
+
+  if (staples.length > 0) {
+    document.getElementById('stapleCount').textContent = staples.length;
+    document.getElementById('stapleAlert').style.display = 'block';
+  } else {
+    document.getElementById('stapleAlert').style.display = 'none';
+  }
+}
+
+function renderTodos() {
+  const highRetention = analysisData.filter(d => d.retention >= 0.8);
+  const area = document.getElementById('todoArea');
+  if (!highRetention.length) {
+    area.innerHTML = '<div class="empty">定番判定商品（S_retention ≥ 0.8）はまだありません</div>';
+    return;
+  }
+  area.innerHTML = highRetention.map(d => `
+    <div class="todo-card">
+      <div>
+        <div class="tc-text">【定番仕入設定せよ】${d.keyword}</div>
+        <div class="tc-kw">カテゴリ: ${d.category} | S_retention: ${d.retention.toFixed(3)}</div>
+      </div>
+      <button class="btn-copy" onclick="copyTodo('${d.keyword.replace(/'/g, "\\'")}', '${d.retention.toFixed(3)}')">コピー</button>
+    </div>
+  `).join('');
+}
+
+function copyTodo(kw, score) {
+  const text = `【定番仕入設定せよ】${kw} | S_retention: ${score} | ${new Date().toLocaleDateString('ja-JP')}`;
+  navigator.clipboard.writeText(text).then(() => alert('コピーしました:\n' + text));
+}
+
+document.getElementById('kwInput').addEventListener('keydown', e => { if (e.key === 'Enter') runAnalysis(); });
+</script>
+</body>
+</html>

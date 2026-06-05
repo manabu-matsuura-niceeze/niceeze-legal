@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARコア計測モード — NiceEze SBDS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:  #1A2B4C;
+      --amber: #E8A020;
+      --light: #F5F7FA;
+    }
+
+    body {
+      background: var(--navy);
+      color: var(--light);
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* LAYOUT_MASTER numeric style */
+    .num {
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+    }
+
+    /* not-supported fallback */
+    #unsupported {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    #unsupported h1 { font-size: 1.25rem; color: var(--amber); }
+    #unsupported p  { font-size: 0.9rem; line-height: 1.6; opacity: 0.85; }
+
+    /* start screen */
+    #start-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    #start-screen h1 {
+      font-size: 1.3rem;
+      color: var(--amber);
+      letter-spacing: 0.02em;
+    }
+    #start-screen p { font-size: 0.85rem; opacity: 0.8; line-height: 1.6; }
+
+    /* buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.4rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      text-decoration: none;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-primary { background: var(--amber); color: var(--navy); }
+    .btn-ghost   { background: transparent; color: var(--light); border: 1.5px solid rgba(245,247,250,0.4); }
+    .btn-danger  { background: rgba(200,40,40,0.88); color: #fff; }
+
+    /* HUD overlay */
+    #hud {
+      display: none;
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* top bar */
+    #hud-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: env(safe-area-inset-top, 0.5rem) 1rem 0.75rem;
+      background: linear-gradient(to bottom, rgba(26,43,76,0.88) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
+    #hud-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--amber);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* distance display */
+    #hud-distance {
+      position: absolute;
+      bottom: calc(env(safe-area-inset-bottom, 0rem) + 6rem);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26,43,76,0.85);
+      border: 1.5px solid var(--amber);
+      border-radius: 0.6rem;
+      padding: 0.55rem 1.4rem;
+      text-align: center;
+      white-space: nowrap;
+    }
+    #hud-distance .label {
+      font-size: 0.65rem;
+      opacity: 0.7;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    #hud-distance .value {
+      font-size: 2rem;
+      color: var(--amber);
+    }
+    #hud-area {
+      font-size: 0.75rem;
+      opacity: 0.85;
+      margin-top: 0.15rem;
+    }
+
+    /* hint */
+    #hud-hint {
+      position: absolute;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.8rem;
+      background: rgba(26,43,76,0.72);
+      padding: 0.3rem 0.9rem;
+      border-radius: 999px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* bottom controls */
+    #hud-bottom {
+      position: absolute;
+      bottom: env(safe-area-inset-bottom, 0rem);
+      left: 0; right: 0;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(to top, rgba(26,43,76,0.85) 0%, transparent 100%);
+      display: flex;
+      justify-content: center;
+      pointer-events: auto;
+    }
+
+    /* reticle canvas sits on top of everything except HUD */
+    #reticle-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* point markers */
+    .point-dot {
+      position: fixed;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--amber);
+      border: 2px solid #fff;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 8;
+      box-shadow: 0 0 6px rgba(232,160,32,0.7);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Not supported -->
+<div id="unsupported">
+  <h1>WebXR AR 非対応</h1>
+  <p>このブラウザはWebXR AR（ARCore）をサポートしていません。<br>
+     Android Chrome + ARCore 対応端末をお使いください。</p>
+  <a href="pwa_qr.html" class="btn btn-primary">QRコード案内を見る</a>
+  <a href="tms_set_001.html" class="btn btn-ghost">← 戻る</a>
+</div>
+
+<!-- Start screen -->
+<div id="start-screen">
+  <h1>ARコア計測モード</h1>
+  <p>カメラを床や地面に向けてください。<br>
+     検出された面にリティクルが表示されます。<br>
+     タップで計測点を配置します（2点で距離、3点以上で面積）。</p>
+  <button id="btn-start-ar" class="btn btn-primary">AR セッション開始</button>
+  <a href="tms_set_001.html" class="btn btn-ghost">← 戻る</a>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-top">
+    <span id="hud-title">ARコア計測モード</span>
+    <button id="btn-hud-back" class="btn btn-ghost" style="font-size:0.8rem;padding:0.3rem 0.75rem;">← 終了</button>
+  </div>
+
+  <div id="hud-hint">表面を探しています…</div>
+
+  <div id="hud-distance">
+    <div class="label">計測距離</div>
+    <div class="value num" id="dist-value">—— m</div>
+    <div id="hud-area" class="num" style="display:none;"></div>
+  </div>
+
+  <div id="hud-bottom">
+    <button id="btn-reset" class="btn btn-danger">計測リセット</button>
+  </div>
+</div>
+
+<!-- Reticle canvas -->
+<canvas id="reticle-canvas"></canvas>
+
+<script>
+(async () => {
+  const startScreen   = document.getElementById('start-screen');
+  const unsupported   = document.getElementById('unsupported');
+  const hud           = document.getElementById('hud');
+  const hintEl        = document.getElementById('hud-hint');
+  const distEl        = document.getElementById('dist-value');
+  const areaEl        = document.getElementById('hud-area');
+  const btnStart      = document.getElementById('btn-start-ar');
+  const btnReset      = document.getElementById('btn-reset');
+  const btnHudBack    = document.getElementById('btn-hud-back');
+  const reticleCanvas = document.getElementById('reticle-canvas');
+  const ctx2d         = reticleCanvas.getContext('2d');
+
+  // State
+  let xrSession      = null;
+  let refSpace       = null;
+  let hitTestSource  = null;
+  let reticleVisible = false;
+  let reticlePos     = null;   // {x,y,z} world coords from hit test
+  let points         = [];     // [{x,y,z}] placed measurement points
+  let pointDots      = [];     // DOM elements (screen-space visual markers)
+  let gl             = null;
+  let xrCanvas       = null;
+
+  // Resize reticle canvas
+  function resizeCanvas() {
+    reticleCanvas.width  = window.innerWidth;
+    reticleCanvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // Check WebXR support
+  const supported = !!(
+    navigator.xr &&
+    await navigator.xr.isSessionSupported('immersive-ar').catch(() => false)
+  );
+
+  if (!supported) {
+    startScreen.style.display = 'none';
+    unsupported.style.display = 'flex';
+    return;
+  }
+
+  // Draw reticle ring at screen centre (hit-test hits are always near screen centre in AR)
+  function drawReticle(cx, cy, visible) {
+    ctx2d.clearRect(0, 0, reticleCanvas.width, reticleCanvas.height);
+    if (!visible) return;
+    const rx = 30, ry = 11;
+    // outer ring
+    ctx2d.beginPath();
+    ctx2d.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx2d.strokeStyle = '#E8A020';
+    ctx2d.lineWidth   = 3;
+    ctx2d.shadowColor = '#E8A020';
+    ctx2d.shadowBlur  = 8;
+    ctx2d.stroke();
+    ctx2d.shadowBlur  = 0;
+    // centre dot
+    ctx2d.beginPath();
+    ctx2d.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx2d.fillStyle = '#E8A020';
+    ctx2d.fill();
+  }
+
+  // Euclidean distance between two 3-D points
+  function dist3(a, b) {
+    const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
+  // Shoelace area projected onto XZ plane (floor)
+  function shoelaceArea(pts) {
+    let area = 0;
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      area += pts[i].x * pts[j].z;
+      area -= pts[j].x * pts[i].z;
+    }
+    return Math.abs(area) / 2;
+  }
+
+  function updateDistDisplay() {
+    if (points.length < 2) {
+      distEl.textContent      = '—— m';
+      areaEl.style.display    = 'none';
+      return;
+    }
+    const d = dist3(points[0], points[1]);
+    distEl.textContent = d.toFixed(2) + ' m';
+
+    if (points.length >= 3) {
+      const a = shoelaceArea(points);
+      areaEl.style.display = 'block';
+      areaEl.textContent   = '面積: ' + a.toFixed(2) + ' m²';
+    } else {
+      areaEl.style.display = 'none';
+    }
+  }
+
+  function setHint(msg) {
+    hintEl.textContent = msg;
+  }
+
+  // Screen-space dot markers for placed points
+  function addPointDot(sx, sy) {
+    const dot = document.createElement('div');
+    dot.className  = 'point-dot';
+    dot.style.left = sx + 'px';
+    dot.style.top  = sy + 'px';
+    document.body.appendChild(dot);
+    pointDots.push(dot);
+  }
+
+  function clearPointDots() {
+    pointDots.forEach(d => d.remove());
+    pointDots = [];
+  }
+
+  function resetMeasurement() {
+    points = [];
+    clearPointDots();
+    updateDistDisplay();
+    setHint('タップで最初の点を配置');
+  }
+
+  // Center of screen — hit-test reticle is always rendered near here in passthrough AR
+  function screenCenter() {
+    return { x: window.innerWidth / 2, y: window.innerHeight * 0.5 };
+  }
+
+  // Start AR session
+  btnStart.addEventListener('click', async () => {
+    try {
+      xrSession = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay'],
+        domOverlay: { root: document.body }
+      });
+    } catch (e) {
+      alert('ARセッションを開始できませんでした:\n' + e.message);
+      return;
+    }
+
+    startScreen.style.display = 'none';
+    hud.style.display         = 'block';
+    setHint('表面を探しています…');
+
+    // Minimal WebGL context for XR
+    xrCanvas = document.createElement('canvas');
+    xrCanvas.style.cssText =
+      'position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;';
+    document.body.appendChild(xrCanvas);
+
+    gl = xrCanvas.getContext('webgl', { xrCompatible: true });
+    await gl.makeXRCompatible();
+    xrSession.updateRenderState({
+      baseLayer: new XRWebGLLayer(xrSession, gl)
+    });
+
+    refSpace = await xrSession.requestReferenceSpace('local');
+
+    const viewerSpace = await xrSession.requestReferenceSpace('viewer');
+    hitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
+
+    // Tap to place measurement point
+    xrSession.addEventListener('select', () => {
+      if (!reticlePos) return;
+      points.push({ x: reticlePos.x, y: reticlePos.y, z: reticlePos.z });
+      const c = screenCenter();
+      addPointDot(c.x, c.y);
+      if (points.length === 1)      setHint('タップで2点目を配置');
+      else if (points.length === 2) setHint('距離計測完了 — 続けて面積計測も可能');
+      else                          setHint('タップで点を追加');
+      updateDistDisplay();
+    });
+
+    xrSession.requestAnimationFrame(onXRFrame);
+
+    xrSession.addEventListener('end', () => cleanup());
+  });
+
+  function onXRFrame(time, frame) {
+    xrSession.requestAnimationFrame(onXRFrame);
+
+    const pose = frame.getViewerPose(refSpace);
+    if (!pose) return;
+
+    // Hit-test
+    if (hitTestSource) {
+      const results = frame.getHitTestResults(hitTestSource);
+      if (results.length > 0) {
+        const hitPose  = results[0].getPose(refSpace);
+        reticlePos     = hitPose.transform.position;
+        reticleVisible = true;
+        if (points.length === 0) setHint('タップで計測点を配置');
+        else                     setHint('タップで次の点を配置');
+      } else {
+        reticleVisible = false;
+        reticlePos     = null;
+        setHint('表面を探しています…');
+      }
+    }
+
+    const c = screenCenter();
+    drawReticle(c.x, c.y, reticleVisible);
+
+    // Clear the XR framebuffer (transparent passthrough)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, xrSession.renderState.baseLayer.framebuffer);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  }
+
+  function cleanup() {
+    if (hitTestSource) { hitTestSource.cancel(); hitTestSource = null; }
+    if (xrCanvas)      { xrCanvas.remove();       xrCanvas = null; }
+    hud.style.display = 'none';
+    ctx2d.clearRect(0, 0, reticleCanvas.width, reticleCanvas.height);
+    clearPointDots();
+    points    = [];
+    xrSession = null;
+    startScreen.style.display = 'flex';
+  }
+
+  btnReset.addEventListener('click', resetMeasurement);
+
+  btnHudBack.addEventListener('click', async () => {
+    if (xrSession) await xrSession.end();
+    window.location.href = 'tms_set_001.html';
+  });
+})();
+</script>
+</body>
+</html>

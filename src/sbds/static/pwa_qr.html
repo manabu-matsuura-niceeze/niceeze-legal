@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AR計測 — ブラウザ案内 | NiceEze SBDS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:  #1A2B4C;
+      --amber: #E8A020;
+      --light: #F5F7FA;
+    }
+
+    body {
+      background: var(--navy);
+      color: var(--light);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1.25rem env(safe-area-inset-bottom, 1.5rem);
+      gap: 1.5rem;
+    }
+
+    /* LAYOUT_MASTER numeric style */
+    .num {
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+    }
+
+    header {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      color: var(--amber);
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      font-size: 0.8rem;
+      opacity: 0.65;
+    }
+
+    /* info card */
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(232,160,32,0.3);
+      border-radius: 0.75rem;
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .card h2 {
+      font-size: 0.9rem;
+      color: var(--amber);
+    }
+
+    .card p, .card li {
+      font-size: 0.85rem;
+      line-height: 1.65;
+      opacity: 0.88;
+    }
+
+    .card ul {
+      padding-left: 1.25rem;
+    }
+
+    /* QR section */
+    #qr-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    #qr-label {
+      font-size: 0.9rem;
+      color: var(--amber);
+      font-weight: 600;
+      text-align: center;
+    }
+
+    #qr-box {
+      background: #fff;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 200px;
+      min-height: 200px;
+    }
+
+    #qr-instruction {
+      font-size: 0.85rem;
+      text-align: center;
+      opacity: 0.85;
+      line-height: 1.6;
+    }
+
+    /* URL display */
+    #url-display {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    #url-display label {
+      font-size: 0.75rem;
+      opacity: 0.65;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    #url-text {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(245,247,250,0.2);
+      border-radius: 0.45rem;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.78rem;
+      color: var(--light);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    /* buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.4rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      text-decoration: none;
+      width: 100%;
+      max-width: 480px;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-primary { background: var(--amber); color: var(--navy); }
+    .btn-ghost   { background: transparent; color: var(--light); border: 1.5px solid rgba(245,247,250,0.4); }
+
+    #copy-feedback {
+      font-size: 0.75rem;
+      text-align: center;
+      color: var(--amber);
+      height: 1rem;
+      transition: opacity 0.3s;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>AR計測 — ブラウザ案内</h1>
+    <p>NiceEze SBDS WebXR AR 計測機能</p>
+  </header>
+
+  <!-- Explanation card -->
+  <div class="card">
+    <h2>WebXR AR の動作条件</h2>
+    <ul>
+      <li>Android スマートフォン（ARCore 対応機種）</li>
+      <li>Google Chrome ブラウザ（最新版）</li>
+      <li>ARCore サービスがインストール済みであること</li>
+    </ul>
+    <p>iPhone / Safari / デスクトップブラウザでは AR 計測機能はご利用いただけません。</p>
+  </div>
+
+  <!-- QR code section -->
+  <div id="qr-section">
+    <div id="qr-label">QRコードを読み取る</div>
+    <div id="qr-box">
+      <div id="qrcode"></div>
+    </div>
+    <p id="qr-instruction">AndroidのChromeでこのQRコードを読み取ってください</p>
+  </div>
+
+  <!-- URL display + copy -->
+  <div id="url-display">
+    <label>AR 計測ページURL</label>
+    <div id="url-text" class="num">—</div>
+  </div>
+
+  <button id="btn-copy" class="btn btn-primary">URLをコピー</button>
+  <div id="copy-feedback"></div>
+
+  <a href="tms_set_001.html" class="btn btn-ghost">← 戻る</a>
+
+  <!-- QR code library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+          integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSuhJ+tkEestFXNBb4FmcoFpUBGHyKY+Bw5w=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>
+    (function () {
+      // Compute the AR URL dynamically
+      const arUrl = window.location.origin + '/ar_measure.html';
+
+      // Display URL text
+      document.getElementById('url-text').textContent = arUrl;
+
+      // Generate QR code
+      const qrEl = document.getElementById('qrcode');
+      try {
+        new QRCode(qrEl, {
+          text:         arUrl,
+          width:        180,
+          height:       180,
+          colorDark:    '#1A2B4C',
+          colorLight:   '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch (e) {
+        qrEl.textContent = 'QRコードの生成に失敗しました。URLをコピーしてください。';
+        qrEl.style.color = '#1A2B4C';
+        qrEl.style.fontSize = '0.75rem';
+        qrEl.style.padding = '0.5rem';
+      }
+
+      // Copy button
+      const btnCopy  = document.getElementById('btn-copy');
+      const feedback = document.getElementById('copy-feedback');
+      let feedbackTimer = null;
+
+      btnCopy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(arUrl);
+          feedback.textContent = 'コピーしました！';
+        } catch (e) {
+          // Fallback for older browsers
+          const ta = document.createElement('textarea');
+          ta.value = arUrl;
+          ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          feedback.textContent = 'コピーしました！';
+        }
+        feedback.style.opacity = '1';
+        clearTimeout(feedbackTimer);
+        feedbackTimer = setTimeout(() => {
+          feedback.style.opacity = '0';
+        }, 2500);
+      });
+    })();
+  </script>
+</body>
+</html>
