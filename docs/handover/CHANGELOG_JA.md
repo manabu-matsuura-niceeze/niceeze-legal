@@ -540,6 +540,39 @@ CEO判断：要 / 不要
 
 ---
 
+## [G2-003] 2026-06-05 — Research実API連携 + 自律商談フロー実装
+
+### 追加・更新
+- `src/research/res_a01.py` Ver 1.1 — PriceFetcher 実API連携追加
+  - `RAKUTEN_API_ENDPOINT` / `YAHOO_API_ENDPOINT` 定数追加
+  - `__init__()`: KEEPA_API_KEY / RAKUTEN_APP_ID / YAHOO_CLIENT_ID 環境変数読み込み
+  - `_mock_record()`: モック生成メソッドに切り出し
+  - `_fetch_rakuten()`: 楽天市場商品検索API呼び出し（urllib stdlib only）
+  - `_fetch_yahoo()`: Yahoo!ショッピング商品検索API呼び出し
+  - `fetch()`: supplier別APIルーティング（全てモックフォールバック付き）
+- `src/surplus_shift/negotiation_log.py`（新規）— 自律商談フロー履歴管理
+  - `NegotiationRecord`: draft→human_approved→sent ワークフロー
+  - `NegotiationLog`: add_draft / human_approve / mark_sent / reject メソッド
+  - `mark_sent()`: `human_approved` ステータス必須チェック（自動送信防止）
+  - `human_approval_required: True` を全to_dict()に含む
+- `src/surplus_shift/__init__.py` — NegotiationLog / NegotiationRecord エクスポート追加
+- `tests/test_surplus_gate.py` — TestNegotiationLog 11テスト追加（計48テスト）
+
+### Gate D制約維持確認
+- `human_approval_required=True` 変更禁止（`__setattr__`ガード継続）
+- 自動送信禁止ワークフロー: `mark_sent()` が `human_approved` ステータス必須
+- AIは交渉案作成・提示まで。最終送信は必ず人間担当者が承認後に手動実行
+
+### CI/テスト状況（全Pass）
+- test_surplus_gate: **48件** ✅（37 → 48、+11件）
+- test_research: 38件 ✅
+- bandit: High:0 / Medium:0 ✅
+
+### コミット
+- SHA: 7675f58（`feat: Research実API連携 + 自律商談フロー実装 (G2-003)`）
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
