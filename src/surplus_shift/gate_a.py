@@ -1,6 +1,7 @@
-"""Gate A — Keepa API疎通確認・価格データ取得 (Ver 1.0)"""
+"""Gate A — Keepa API疎通確認・価格データ取得 (Ver 1.1)"""
 from __future__ import annotations
 
+import os
 import random  # nosec B311 — MVP mock only
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -42,8 +43,8 @@ class KeepaClient:
     _KEEPA_ENDPOINT = 'https://api.keepa.com/product'  # nosec B310 — hardcoded Keepa API URL only
 
     def __init__(self, api_key: str = '') -> None:
-        self._api_key = api_key
-        self._mock_mode = not bool(api_key)
+        self._api_key = api_key or os.environ.get('KEEPA_API_KEY', '')
+        self._mock_mode = not bool(self._api_key)
 
     # ── 公開メソッド ──────────────────────────
 
