@@ -292,6 +292,33 @@ CEO判断：要 / 不要
 
 ---
 
+## [INST-002] 2026-06-05 — SURPLUS_SHIFT 5種ドキュメント v1.0 生成完了
+
+### CEO承認
+- 松浦CEO指示: 2026年6月5日付 SURPLUS_SHIFT文書5種並列生成
+
+### 追加
+- `docs/SURPLUS_SHIFT/SURPLUS_SHIFT_BRD_v1.0.docx` (41K) — ビジネス要件定義書
+  - SURPLUS-001〜005機能一覧 / KPI（転換率≥70% / マッチング≤48h / 満足度≥4.0/5.0）
+  - Gate制G0〜G4 / FinOps月額¥5,000上限 / 不滅憲章チェックリスト
+- `docs/SURPLUS_SHIFT/SURPLUS_SHIFT_SRS_v1.0.docx` (42K) — ソフトウェア要件仕様書
+  - GCPサーバーレス構成（Cloud Run / Firestore / Cloud Functions）
+  - データモデル: SurplusItem / BuyerProfile / MatchRecord / TransactionLog / AuditLog
+  - Cloud Run APIエンドポイント9本 / bandit 0件必須 / PII取扱方針
+- `docs/SURPLUS_SHIFT/SURPLUS_SHIFT_SEQ_v1.0.pptx` (40K) — シーケンス図 5スライド
+  - 売り手/買い手フロー / Cloud Functionsシーケンス / エラーハンドリング
+- `docs/SURPLUS_SHIFT/SURPLUS_SHIFT_UI_v1.0.pptx` (41K) — UI設計 5スライド
+  - SURPLUS-001売り手ダッシュボード / SURPLUS-002買い手マッチング / SURPLUS-003価格交渉
+  - LAYOUT_MASTER準拠指定（font-mono tabular-nums / カラーパレット / IndexedDB v142）
+- `docs/SURPLUS_SHIFT/SURPLUS_SHIFT_PHASE_v1.0.pptx` (39K) — フェーズ計画 5スライド
+  - Gate制G0〜G4概要 / G1マイルストーン（2026/09末）/ G2マイルストーン（2026/11末）
+  - FinOps: MVP¥0/月 → G3以降¥2,250〜¥4,500/月
+
+### 生成スクリプト
+- `scripts/gen_surplus_brd.py` / `gen_surplus_srs.py` / `gen_surplus_pptx.py`
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
