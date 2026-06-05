@@ -397,6 +397,42 @@ CEO判断：要 / 不要
 
 ---
 
+## [G2-001] 2026-06-05 — SURPLUS SHIFT Gate A〜D 判定ロジック実装（CEO承認・Gate D A案確定）
+
+### CEO承認
+- 松浦CEO承認: 2026年6月5日付 Gate D A案確定（実数値設定）
+- 自律商談制約: AIは交渉案作成・提示まで。最終送信は必ず人間担当者が承認してから実行（自動送信禁止）
+
+### 追加
+- `src/surplus_shift/__init__.py` — モジュール初期化（Gate A〜D全エクスポート）
+- `src/surplus_shift/gate_a.py` — Gate A: KeepaClient + PriceSnapshot
+  - Keepa API疎通確認・価格データ取得（ASIN→価格/ランキング）
+  - api_key未設定→モックモード / ネットワーク障害→モックフォールバック
+  - # nosec B311 (MVPモック) / # nosec B310 (Keepa APIハードコードURL)
+- `src/surplus_shift/gate_b.py` — Gate B: GrossMarginCalc + PurchaseDecision
+  - 粗利計算: PLATFORM_FEE_RATE=10% / FBA_FEE_DEFAULT=¥400 / MIN_GROSS_MARGIN_RATE=20%
+  - 仕入判断: GO(≥20%) / CONDITIONAL(15〜20%) / NO_GO(<15%)
+- `src/surplus_shift/gate_c.py` — Gate C: InventoryScorer + DemandForecast
+  - 在庫回転: TURNOVER_THRESHOLD_DAYS=30 / surplus_risk: low/medium/high
+  - 需要予測スコア: DEMAND_SCORE_THRESHOLD=0.6 / batch_score()対応
+- `src/surplus_shift/gate_d.py` — Gate D: CashFlowJudge + MonthlyCFInput (A案：実数値)
+  - 月次CF整合判定: MAX_MONTHLY_PROCUREMENT=¥50万 / MIN_CF_RESERVE=¥20万
+  - **human_approval_required=True 変更禁止**（__setattr__ガード実装済み）
+  - 交渉案ドラフトに「【人間担当者承認後に送信すること】」警告必須
+  - surplus_shift_commission_rate=5%
+- `tests/test_surplus_gate.py` — 37テスト全Pass
+  - TestGateA(8) / TestGateB(10) / TestGateC(8) / TestGateD(11)
+
+### banditスキャン
+- src/surplus_shift/ 全ファイル: High 0 / Medium 0 / Low 0 ✅
+
+### 安全制約（Gate D）
+- `human_approval_required` は常に `True`（コード上書き不可能・__setattr__で強制）
+- `negotiation_draft` は提示専用テキスト。自動送信ロジック一切なし
+- 月次CF判定は全て実数値入力（固定閾値ではなく松浦CEO実数値指定必須）
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
