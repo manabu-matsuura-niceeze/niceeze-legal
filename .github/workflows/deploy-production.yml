@@ -76,12 +76,13 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Check GCP APIs enabled
+      - name: Enable required GCP APIs
         run: |
-          echo "=== GCP API確認 ==="
-          gcloud services list --enabled --project=${{ env.GCP_PROJECT_ID }} \
-            --filter="name:(run.googleapis.com OR secretmanager.googleapis.com OR containerregistry.googleapis.com)" \
-            --format="table(name,state)"
+          echo "=== 必須GCP API有効化 ==="
+          gcloud services enable artifactregistry.googleapis.com --project=${{ env.GCP_PROJECT_ID }} --quiet
+          gcloud services enable run.googleapis.com --project=${{ env.GCP_PROJECT_ID }} --quiet
+          gcloud services enable containerregistry.googleapis.com --project=${{ env.GCP_PROJECT_ID }} --quiet
+          echo "API有効化完了"
 
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker --quiet
@@ -143,8 +144,6 @@ jobs:
             --format 'value(status.url)')
           echo "RESEARCH URL : $RESEARCH_URL"
           echo "MARKETING URL: $MARKETING_URL"
-          echo "RESEARCH_URL=$RESEARCH_URL" >> $GITHUB_OUTPUT
-          echo "MARKETING_URL=$MARKETING_URL" >> $GITHUB_OUTPUT
 
       - name: Health check — RESEARCH
         run: |
