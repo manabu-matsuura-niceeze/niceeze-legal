@@ -32,7 +32,7 @@ jobs:
         run: python -m unittest tests.test_surplus_gate -v
 
       - name: Gate — Run test_audit
-        run: python -m unittest tests.test_audit -v
+        run: pytest tests/test_audit.py -v --tb=short
 
       - name: Gate — Security scan (bandit)
         run: bandit -r src/ -ll
