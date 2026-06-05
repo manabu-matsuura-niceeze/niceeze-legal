@@ -240,6 +240,58 @@ CEO判断：要 / 不要
 
 ---
 
+## [G1-002] 2026-06-05 — DXFインポート・WebXR AR・PWAフォールバック・特急レーン継続
+
+### CEO承認
+- 松浦CEO Go指示: 2026年6月5日付 全5タスク並列着手
+
+### 更新
+- `src/sbds/static/tms_set_001.html`:
+  - `importCAD()` スタブ → フルDXFインポート実装（inline JS parser）
+    - グループコードペア解析 / ENTITIES セクション抽出
+    - TEXT/MTEXT → 棟名・部屋番号 / LWPOLYLINE → 面積（Shoelace式, mm²→m²）
+    - LINE → EV距離中央値（mm→m）/ DXFプレビューモーダル（適用前確認）
+  - `launchAR()` スタブ → WebXR実装（immersive-ar対応チェック → ar_measure.html）
+  - PWA: `<link rel="manifest" href="manifest.json">` + `navigator.serviceWorker.register('sw.js')`
+  - 隠しfileインプット `<input id="dxf-file-input" accept=".dxf">`
+
+### 追加（SBDS G1）
+- `src/sbds/static/ar_measure.html` — WebXR ARCore計測画面
+  - immersive-ar セッション + hit-test フィーチャー
+  - Reticle（amber リング）サーフェス追跡 / タップで計測点配置
+  - 2点間距離表示「X.XX m」/ 3点以上で面積推定（Shoelace XZ平面投影）
+  - LAYOUT_MASTER準拠: ui-monospace tabular-nums letter-spacing:-0.04em
+  - WebXR非対応時はフォールバックパネル → pwa_qr.html へ誘導
+- `src/sbds/static/manifest.json` — PWAマニフェスト
+  - name: "NiceEze SBDS" / display: standalone / theme: #1A2B4C / icon 192+512
+- `src/sbds/static/sw.js` — サービスワーカー（cache-first / niceeze-sbds-v1）
+  - install: 4ファイルプリキャッシュ / activate: 旧キャッシュ削除 / fetch: cache-first+更新
+- `src/sbds/static/pwa_qr.html` — PWAフォールバック案内（WebXR非対応時）
+  - QRコード動的生成（qrcodejs CDN / SRI hash）/ ar_measure.html URL表示
+  - クリップボードコピーボタン / Android Chrome ARCore 必要要件案内
+
+### 追加（MARKETING特急レーン継続）
+- `src/marketing/delivery_log.py` — 配信ログモジュール
+  - `DeliveryRecord`: id（SHA-256）/ content_type / topic / category / delivered_at / char_count / status
+  - `DeliveryLog`: add() / get_by_type() / get_recent(days=7) / summary() / to_json()
+  - `DeliveryStats`: total / by_type / last_7days / last_delivery_at
+  - stdlib only / bandit 0件 / PII不使用
+
+### 追加（RESEARCH特急レーン継続）
+- `src/research/static/research_dashboard.html` — 統合リサーチダッシュボード
+  - Panel A RES-A01: 8社価格マトリクス（最安amber強調 / 1ケース価格 / 1個単価）
+  - Panel B RES-A02: 8カテゴリチップ / 3モード（売れ筋/急成長/定番残存）
+  - S_retention tabular-nums / ≥0.6 緑バッジ / ≥0.8 TODOカード自動生成
+  - IndexedDB niceeze_cache_v142 / モバイル対応 / 外部依存ゼロ
+
+### 確定判断（反映済み）
+- 判断④A: DXFのみ（DWG恒久除外）
+- 判断⑤A: WebXR精度 ±50cm許容
+- 判断⑥A: PWAフォールバック（LIFF非対応時 → pwa_qr.html）
+- 判断③A: Android Chrome + ARCore優先（iOS対応はG2）
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
