@@ -1,0 +1,11 @@
+# NiceEze Railway デプロイ設定 (Ver 1.0)
+# 松浦CEO承認: 2026-06-05 20:05 JST
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
