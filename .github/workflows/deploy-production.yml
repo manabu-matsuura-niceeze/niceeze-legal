@@ -1,7 +1,6 @@
 name: "NiceEze Deploy — 本番（手動・CEO承認必須）"
 
 # 本番デプロイは手動トリガーのみ。自動本番デプロイ禁止。
-# 実際のCloud Runデプロイはgcp-credentialsシークレット設定後に有効化
 
 on:
   workflow_dispatch:
@@ -17,6 +16,10 @@ on:
         options:
           - "本番デプロイを承認する"
           - "キャンセル"
+
+env:
+  GCP_PROJECT_ID: serene-bonbon-236821
+  GCP_REGION: asia-northeast1
 
 jobs:
   validate-approval:
@@ -65,16 +68,99 @@ jobs:
       - name: Final gate — Security scan (bandit)
         run: bandit -r src/ -ll
 
-      - name: 本番デプロイ承認済み確認
-        run: |
-          echo "=== 本番デプロイ承認済み ==="
-          echo "承認者: ${{ inputs.approved_by }}"
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: GCP Cloud Run デプロイコマンド（参考）
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Check GCP APIs enabled
         run: |
-          echo "# 実際のCloud Runデプロイコマンド（GCP認証設定後に有効化）:"
-          echo "# gcloud run deploy niceeze-research --image gcr.io/PROJECT_ID/niceeze-research:latest --region asia-northeast1"
-          echo "# gcloud run deploy niceeze-marketing --image gcr.io/PROJECT_ID/niceeze-marketing:latest --region asia-northeast1"
+          echo "=== GCP API確認 ==="
+          gcloud services list --enabled --project=${{ env.GCP_PROJECT_ID }} \
+            --filter="name:(run.googleapis.com OR secretmanager.googleapis.com OR containerregistry.googleapis.com)" \
+            --format="table(name,state)"
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      - name: Build and push RESEARCH image
+        run: |
+          docker build -f docker/research.Dockerfile \
+            -t gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-research:latest \
+            -t gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-research:${{ github.sha }} .
+          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-research:latest
+          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-research:${{ github.sha }}
+
+      - name: Build and push MARKETING image
+        run: |
+          docker build -f docker/marketing.Dockerfile \
+            -t gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-marketing:latest \
+            -t gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-marketing:${{ github.sha }} .
+          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-marketing:latest
+          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-marketing:${{ github.sha }}
+
+      - name: Deploy RESEARCH to Cloud Run
+        run: |
+          gcloud run deploy niceeze-research \
+            --image gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-research:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 512Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --set-env-vars "NICEEZE_ENV=production,GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" \
+            --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy MARKETING to Cloud Run
+        run: |
+          gcloud run deploy niceeze-marketing \
+            --image gcr.io/${{ env.GCP_PROJECT_ID }}/niceeze-marketing:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8081 \
+            --memory 512Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --set-env-vars "NICEEZE_ENV=production,GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" \
+            --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Get Cloud Run URLs
+        run: |
+          echo "=== Cloud Run デプロイ完了 ==="
+          RESEARCH_URL=$(gcloud run services describe niceeze-research \
+            --region ${{ env.GCP_REGION }} --project ${{ env.GCP_PROJECT_ID }} \
+            --format 'value(status.url)')
+          MARKETING_URL=$(gcloud run services describe niceeze-marketing \
+            --region ${{ env.GCP_REGION }} --project ${{ env.GCP_PROJECT_ID }} \
+            --format 'value(status.url)')
+          echo "RESEARCH URL : $RESEARCH_URL"
+          echo "MARKETING URL: $MARKETING_URL"
+          echo "RESEARCH_URL=$RESEARCH_URL" >> $GITHUB_OUTPUT
+          echo "MARKETING_URL=$MARKETING_URL" >> $GITHUB_OUTPUT
+
+      - name: Health check — RESEARCH
+        run: |
+          RESEARCH_URL=$(gcloud run services describe niceeze-research \
+            --region ${{ env.GCP_REGION }} --project ${{ env.GCP_PROJECT_ID }} \
+            --format 'value(status.url)')
+          curl -sf "$RESEARCH_URL/health" | python3 -m json.tool
+          echo "RESEARCH /health: OK"
+
+      - name: Health check — MARKETING
+        run: |
+          MARKETING_URL=$(gcloud run services describe niceeze-marketing \
+            --region ${{ env.GCP_REGION }} --project ${{ env.GCP_PROJECT_ID }} \
+            --format 'value(status.url)')
+          curl -sf "$MARKETING_URL/health" | python3 -m json.tool
+          echo "MARKETING /health: OK"
 
       - name: 本番デプロイサマリー
         run: |
@@ -83,10 +169,9 @@ jobs:
           echo "=============================="
           echo "承認者     : ${{ inputs.approved_by }}"
           echo "コミット   : ${{ github.sha }}"
-          echo "実行者     : ${{ github.actor }}"
+          echo "プロジェクト: ${{ env.GCP_PROJECT_ID }}"
+          echo "リージョン : ${{ env.GCP_REGION }}"
           echo "デプロイ時刻: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           echo "テスト     : PASSED"
           echo "セキュリティ: PASSED"
-          echo "NOTE: 実際のGCP Cloud Runデプロイには"
-          echo "      GCP_SA_KEY シークレットの設定が必要です。"
           echo "=============================="
