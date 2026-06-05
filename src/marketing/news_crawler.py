@@ -51,7 +51,7 @@ class NewsArticle:
         if not self.article_id:
             self.article_id = hashlib.sha256(
                 f'{self.url}:{self.published_at}'.encode()
-            ).hexdigest()[:12]
+            ).hexdigest()
 
     @property
     def category_label(self) -> str:
