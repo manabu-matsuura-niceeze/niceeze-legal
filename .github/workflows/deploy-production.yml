@@ -20,6 +20,7 @@ on:
 env:
   GCP_PROJECT_ID: serene-bonbon-236821
   GCP_REGION: asia-northeast1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   validate-approval:
@@ -76,13 +77,15 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Enable required GCP APIs
+      - name: GCP請求アカウント・API状態確認
         run: |
-          echo "=== 必須GCP API有効化 ==="
-          gcloud services enable artifactregistry.googleapis.com --project=${{ env.GCP_PROJECT_ID }} --quiet
-          gcloud services enable run.googleapis.com --project=${{ env.GCP_PROJECT_ID }} --quiet
-          gcloud services enable containerregistry.googleapis.com --project=${{ env.GCP_PROJECT_ID }} --quiet
-          echo "API有効化完了"
+          echo "=== GCPプロジェクト確認 ==="
+          echo "プロジェクトID: ${{ env.GCP_PROJECT_ID }}"
+          gcloud projects describe ${{ env.GCP_PROJECT_ID }} --format="table(name,projectId,projectNumber,lifecycleState)"
+          echo ""
+          echo "=== 有効済みAPI確認 ==="
+          gcloud services list --enabled --project=${{ env.GCP_PROJECT_ID }} \
+            --format="table(name)" 2>/dev/null | head -30 || echo "API一覧取得スキップ"
 
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker --quiet
