@@ -620,6 +620,30 @@ CEO判断：要 / 不要
 
 ---
 
+## [INFRA-001] 2026-06-05 — E2Eテスト自動化 + GCP IaC セットアップスクリプト
+
+### 追加
+- `tests/test_e2e.py` — 全5システム E2Eテスト（31テスト）
+  - TestResearchE2E (6): HTTPServer経由 /health /price /trend 404 境界値
+  - TestMarketingE2E (7): HTTPServer経由 /generate /log /x/post 404
+  - TestGovE2E (7): HTTPServer経由 /coo /finops /ops
+  - TestSurplusShiftE2E (6): 直接インポート Gate A→B→D連鎖・NegotiationLog完全フロー
+  - TestSBDSE2E (5): 直接インポート クレーム最後尾・労働法ロック・Jaro-Winkler名寄せ
+- `tests/conftest.py` — E2E用サーバーフィクスチャ（RESEARCH/MARKETING/GOV port 18080〜18082）
+- `docs/deploy/GCP_SETUP_AUTO.sh` — GCP IaC自動セットアップスクリプト
+  - 6 API有効化・SA作成・IAMロール5種付与・Artifact Registry作成
+  - Cloud Run 3サービス初期作成（research/marketing/gov）
+  - Secret Manager / GitHub Secrets 登録手順ガイド出力
+  - 実行: `export GCP_PROJECT_ID=serene-bonbon-236821 && bash docs/deploy/GCP_SETUP_AUTO.sh`
+- `.github/workflows/ci.yml` 更新: E2Eテストステップ + pytest-cov カバレッジレポート追加
+
+### CI/テスト状況（全Pass）
+- test_e2e: **31件** ✅（新規）
+- **全テスト合計: 280件** ✅（+31件）
+- bandit: High:0 / Medium:0 ✅
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
