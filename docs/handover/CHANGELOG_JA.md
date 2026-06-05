@@ -433,6 +433,45 @@ CEO判断：要 / 不要
 
 ---
 
+## [DEPLOY-001] 2026-06-05 — RESEARCH・MARKETING 本番デプロイ準備完了（B案）
+
+### CEO承認
+- 松浦CEO承認: 2026年6月5日付 B案選択
+- 本番デプロイ最終承認: 松浦CEOが行う（Code停止点）
+
+### 追加（インフラ）
+- `docker-compose.prod.yml` — 3サービス構成（research:8080 / marketing:8081 / nginx:80/443）
+  Docker healthcheck / niceeze-net bridge / restart: unless-stopped
+- `docker/research.Dockerfile` — python:3.12-slim / port 8080 / src/research/ + src/notifications/
+- `docker/marketing.Dockerfile` — python:3.12-slim / port 8081 / src/marketing/ + src/notifications/
+- `nginx.conf` — リバースプロキシ（prefix strip）/ セキュリティヘッダー(X-Content-Type/XFrame/XSS) / gzip / タイムアウト設定
+- `.env.production` — プレースホルダーのみ（ISMS準拠・実シークレット不含）
+
+### 追加（CI/CD — GitHub Actions）
+- `.github/workflows/ci.yml` — Push/PR全ブランチ自動実行
+  テスト: test_research(38) / test_marketing_integration(30) / test_surplus_gate(37) / test_audit
+  bandit -r src/ -ll / アーティファクト保存
+- `.github/workflows/deploy-staging.yml` — claude/beautiful-johnson-J821M push → ステージング自動
+  テスト+bandit再実行ゲート / RESEARCH API疎通確認 / ステージングサマリー出力
+  GCP Cloud Runデプロイ: GCP_SA_KEY設定後に有効化（松浦CEO操作必要）
+- `.github/workflows/deploy-production.yml` — **手動トリガーのみ（本番自動デプロイ禁止）**
+  必須入力: approved_by（承認者名）+ confirm（「本番デプロイを承認する」選択）
+  validate-approval失敗→即時中断 / deploy-productionは承認確認後のみ実行
+
+### 追加（チェックリスト）
+- `docs/deploy/DEPLOY_CHECKLIST.md` — デプロイ前チェックリスト
+  事前確認（テスト/bandit/APIヘルスチェック/レスポンス0.7秒以下）
+  ISMS確認（シークレット/IAM/HTTPS/PII最終確認）
+  FinOps確認（月額¥5,000以内/Cloud Run Min=0）
+  本番デプロイ（**松浦CEO最終承認必須**）
+  ロールバック手順
+
+### 停止点（CEO承認待ち）
+- **ステータス**: ステージング完了準備済み → **本番デプロイ承認待ち（松浦CEO）**
+- 本番デプロイ実行には: GitHub Actions → Deploy to Production → 手動トリガー + 承認者名入力 + 確認選択
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |

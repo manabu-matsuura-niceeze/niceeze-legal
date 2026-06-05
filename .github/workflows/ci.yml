@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install python-docx python-pptx bandit
+        run: pip install python-docx python-pptx bandit pytest
 
       - name: Run test_research
         run: python -m unittest tests.test_research -v
