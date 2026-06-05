@@ -157,6 +157,69 @@
 
 ---
 
+## [NOTIFY-001] 2026-06-05 — 報連相体制アップグレード + Gmail通知モジュール実装
+
+### CEO承認
+- 松浦CEO承認: 2026年6月5日付 報連相体制アップグレード指示
+- 都度即時報告義務化（1ファイル/1機能完了ごと / ブロッカー発生ごと / ハードゲートクリアごと）
+
+### 追加
+- `src/notifications/__init__.py` — モジュール初期化
+- `src/notifications/gmail_notifier.py` — Gmail SMTP通知エンジン（Ver 1.0）
+  - `NotifyPayload` — 即時報告ペイロード（kind/content/next_action/ceo_decision_required）
+  - `GmailNotifier.send()` — TLS必須（ssl.create_default_context）/ パスワード環境変数のみ
+  - `notify_done()` / `notify_pending()` / `notify_blocker()` / `notify_gate()` — 便利関数
+  - Lv.0〜3 エスカレーションレベル定義
+  - bandit 0件 / PII最小化 / FinOps¥0
+  - **セットアップ要件**: Gmail App Password → 環境変数 `GMAIL_APP_PASSWORD` または GCP Secret Manager
+
+### 報告フォーマット（爆速簡略版）
+```
+【即時報告】{時刻}
+種別：完了 / 判断待ち / ブロッカー / ハードゲート承認
+内容：{1〜2行}
+次アクション：{Codeが次にやること}
+CEO判断：要 / 不要
+```
+
+### Gmail件名フォーマット
+```
+[NiceEze CODE] {種別} - {内容の要約} {時刻}
+```
+
+### 未決事項（松浦CEO要件定義待ち）
+- Gmail App Password の発行・Secret Manager登録（CEO操作必要）
+  → 手順は `src/notifications/gmail_notifier.py` docstringに記載
+
+---
+
+## [DRIVE-001] 2026-06-05 — Drive フォルダ構成完全版構築 + 既存ドキュメント全件アップロード
+
+### 追加フォルダ（01_NiceEze_Master_Docs 配下）
+- `00_MANAGEMENT/` (ID: 1kppSYDvY1SjDsZBi7V7FHswqY_3DwnSZ)
+  - `instructions/` (ID: 1kiKB5d0QZfx04YHn_IOJMoS6eSKAfFT7)
+  - `reports/` (ID: 1DH70xvPecB3eiXKOFZn-Q6V6Alt24e2k)
+  - `decisions/` (ID: 1Jaja53Cd30CeUUAx3VR8KLr98IQ3180t)
+  - `changelogs/` (ID: 1nHr0Da1TDVtL1Dd9R0LybdKPmcjXwxT1)
+- `SURPLUS_SHIFT/` (ID: 1-p-km2y82SKb3pw0fEN0tRvCEOET5gCZ)
+- `RESEARCH/` (ID: 1W2AG0q2r9gtAbry2NrpsuuXZz3xxIDqJ)
+- `MARKETING/` (ID: 1C-MXjJy1poPYVcmoPSyibBV295ABvrEq)
+- `GOV/` (ID: 13BwuuIIaG9vVsehTB2f9oWWYWQJMKYQ3)
+
+### アップロード済みドキュメント（遡及分）
+
+| ファイル名（Drive） | 保存先 | Drive ID |
+|:---|:---|:---|
+| INST-001_ドキュメント自動生成指示書_20260605.md | instructions/ | 1ukHGP8Mw9GYTgZi4NZYCZ-0lkK1_0aTT |
+| RPT-001_特急レーン初回進捗報告_20260604.md | reports/ | 1XGCDRVTBTpQ3DY2whHQ_ytmss5DUaaSh |
+| RPT-002_未実装5件Gate別対応計画_Rev2_20260604.md | reports/ | 1DUgmVoY2LMyuMq5uRq5Sig0hcpR2ofi0 |
+| DEC-001_CEO確定判断記録_判断①②③④⑤⑥_20260604.md | decisions/ | 1utwd5pSYlAKnmsYN55TsFldH5n5hzY9S |
+| CHANGELOG_JA_mirror_20260605.md | changelogs/ | 1UpoUJTj0q-qXp1UwPLGRJuWAACARW64e |
+| REVIEW-001_差異照合レポートv142_vs_v140_20260604.md | 00_NiceEze_AI_Audit/ | 1MJNwRmborUl3x4a1efMCTlCrylqJmlF4 |
+| REVIEW-002_iOS_Android比較調査_TECH-20260604-002.md | 00_NiceEze_AI_Audit/ | 1ra7kLhunSLWC4s5wRB-qLm8ijAcTbG6I |
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
