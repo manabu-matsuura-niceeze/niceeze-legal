@@ -1,5 +1,6 @@
 """MARKETING部 統合テスト — ニュースクローラー / コンテンツ生成 / 配信ログ / パイプライン"""
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -11,6 +12,7 @@ from src.marketing.news_crawler import NewsCrawler, CrawlResult, NewsArticle
 from src.marketing.content_generator import ContentGenerator, ContentInput, GeneratedContent
 from src.marketing.delivery_log import DeliveryLog, DeliveryRecord
 from src.marketing.scheduler import ContentScheduler
+from src.marketing.x_poster import XPoster, XPostResult
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +250,72 @@ class TestMarketingPipeline(unittest.TestCase):
         # At minimum one of these conditions must be met (system ran)
         self.assertTrue(has_content or has_errors or result.crawl_result is not None,
                         "Pipeline produced no output at all")
+
+
+# ---------------------------------------------------------------------------
+# TestXPoster
+# ---------------------------------------------------------------------------
+
+class TestXPoster(unittest.TestCase):
+
+    def setUp(self):
+        # 環境変数を確実にクリアしてmock_modeにする
+        for key in ('X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_TOKEN_SECRET', 'X_BEARER_TOKEN'):
+            os.environ.pop(key, None)
+        self.poster = XPoster()
+
+    def test_mock_mode_post_success(self):
+        """mock_mode時に投稿が成功すること"""
+        result = self.poster.post('テスト投稿')
+        self.assertTrue(result.success)
+
+    def test_mock_mode_tweet_id_prefix(self):
+        """mock_modeのtweet_idが mock_ プレフィックスを持つこと"""
+        result = self.poster.post('テスト投稿')
+        self.assertTrue(result.tweet_id.startswith('mock_'))
+
+    def test_truncate_over_140_chars(self):
+        """140文字超のテキストがトランケートされること"""
+        long_text = 'あ' * 200
+        result = self.poster.post(long_text)
+        self.assertEqual(len(result.text), 140)
+
+    def test_to_dict_keys(self):
+        """to_dict() が必要なキーを全て持つこと"""
+        result = self.poster.post('キーチェック')
+        d = result.to_dict()
+        for key in ('tweet_id', 'text', 'posted_at', 'is_mock', 'success', 'error'):
+            with self.subTest(key=key):
+                self.assertIn(key, d)
+
+    def test_mock_success_true(self):
+        """mock_mode時に success=True であること"""
+        result = self.poster.post('サクセステスト')
+        self.assertTrue(result.success)
+
+    def test_missing_api_key_triggers_mock_mode(self):
+        """X_API_KEY未設定でmock_modeになること"""
+        poster = XPoster()
+        self.assertTrue(poster._mock_mode)
+
+    def test_is_mock_flag(self):
+        """mock_mode時に XPostResult.is_mock が True であること"""
+        result = self.poster.post('モックフラグテスト')
+        self.assertTrue(result.is_mock)
+
+    def test_scheduler_run_returns_x_posts_sent(self):
+        """scheduler.run() の結果に x_posts_sent が含まれること"""
+        scheduler = ContentScheduler()
+        result = scheduler.run(run_type='morning')
+        d = result.to_dict()
+        self.assertIn('x_posts_sent', d)
+        self.assertIsInstance(d['x_posts_sent'], int)
+        self.assertGreaterEqual(d['x_posts_sent'], 0)
+
+    def test_x_post_result_is_dataclass(self):
+        """XPostResult が dataclass であること"""
+        result = self.poster.post('データクラステスト')
+        self.assertIsInstance(result, XPostResult)
 
 
 if __name__ == '__main__':
