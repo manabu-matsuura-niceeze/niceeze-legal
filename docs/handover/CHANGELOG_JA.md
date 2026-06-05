@@ -220,6 +220,26 @@ CEO判断：要 / 不要
 
 ---
 
+## [NOTIFY-002] 2026-06-05 — Gmail通知モジュール削除・通知体制確定
+
+### CEO承認
+- 松浦CEO指示: 2026年6月5日付 通知体制確定・Gmail不要確定
+
+### 削除
+- `src/notifications/gmail_notifier.py` — 削除（Gmail MCP未接続・smtplib廃止）
+- `GMAIL_APP_PASSWORD` 環境変数参照 — 全削除
+- `.env` 該当行 — 存在せず（対応不要）
+
+### 更新
+- `src/notifications/__init__.py` — Gmail依存を全削除。定数のみ残存
+
+### 確定事項
+- **通知体制**: このチャット（claude.ai）への都度即時報告のみ（確定）
+- **Gmail通知**: 恒久的に廃止
+- **報告フォーマット**: 変更なし（【即時報告】/種別/内容/次アクション/CEO判断）
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
