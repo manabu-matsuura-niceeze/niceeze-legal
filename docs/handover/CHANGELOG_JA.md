@@ -369,6 +369,34 @@ CEO判断：要 / 不要
 
 ---
 
+## [INST-003] 2026-06-05 — GOV部 5種ドキュメント v1.0 生成完了
+
+### CEO承認
+- 松浦CEO承認: 2026年6月5日付 GOV部ドキュメント生成Go指示
+
+### 追加
+- `docs/GOV/GOV_BRD_v1.0.docx` (40K) — ビジネス要件定義書
+  - GOV-001 COO業務報告(KPI/予実/PMO) / GOV-002 ISMS自動レポート(ISO27001/SHA-256)
+  - GOV-003 FinOps監視(¥0.5円/配送/月額¥5,000上限) / GOV-004 AIガバナンス台帳 / GOV-005 DevSecOps統制
+  - KPI: ISMS適合率100%/FinOps逸脱0件/月次レポート自動生成100%/bandit 0件継続
+- `docs/GOV/GOV_SRS_v1.0.docx` (40K) — ソフトウェア要件仕様書
+  - Cloud Functions + BigQuery + Firestore(append-only) + Secret Manager
+  - データモデル: AuditLog/FinOpsRecord/ISMSReport/GovernanceEntry/CIResult
+  - APIエンドポイント5本: GET /health /kpi /finops/status, POST /audit/log, GET /isms/report
+- `docs/GOV/GOV_SEQ_v1.0.pptx` (38K) — シーケンス図 5スライド
+  - COO月次報告 / FinOps監視(毎時) / DevSecOps統制(git push→bandit→deploy) / AIガバナンス記録
+- `docs/GOV/GOV_UI_v1.0.pptx` (40K) — UI設計 5スライド
+  - S10 COOダッシュボード / FinOps監視画面 / AIガバナンス台帳 / LAYOUT_MASTER準拠
+- `docs/GOV/GOV_PHASE_v1.0.pptx` (39K) — フェーズ計画 5スライド
+  - G1: FinOps監視+bandit CI / G2: ISMS自動レポート+SHA-256 / G4: 完全自律監査
+- `scripts/gen_gov_docs.py` — 生成スクリプト
+
+### 完結確認
+- RESEARCH 5種 ✅ / MARKETING 5種 ✅ / GOV 5種 ✅ — 合計15種ドキュメント全完結
+- SBDS 5種 ✅ / SURPLUS_SHIFT 5種 ✅ — 合計25種ドキュメント全完結（INST-001目標達成）
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
