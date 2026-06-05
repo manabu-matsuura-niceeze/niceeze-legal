@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARコア計測 — NiceEze SBDS</title>
+  <style>
+    :root {
+      --navy: #1A2B4C;
+      --amber: #E8A020;
+      --light-bg: #F5F7FA;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', system-ui, sans-serif;
+      background: var(--navy);
+      color: var(--light-bg);
+      height: 100dvh;
+      overflow: hidden;
+    }
+    #unsupported {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+      padding: 2rem;
+      text-align: center;
+      gap: 1.5rem;
+    }
+    #unsupported h1 { font-size: 1.25rem; color: var(--amber); }
+    #unsupported p { font-size: 0.9rem; line-height: 1.6; color: var(--light-bg); opacity: 0.85; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      text-decoration: none;
+      font-family: inherit;
+    }
+    .btn-amber { background: var(--amber); color: var(--navy); font-weight: 700; }
+    .btn-outline {
+      background: transparent;
+      color: var(--light-bg);
+      border: 1px solid rgba(245,247,250,0.4);
+    }
+    #start-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+      padding: 2rem;
+      text-align: center;
+      gap: 1.5rem;
+    }
+    #start-screen h1 { font-size: 1.5rem; color: var(--amber); }
+    #start-screen p { font-size: 0.9rem; line-height: 1.6; opacity: 0.85; }
+    #hud {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+    #hud-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem 0.75rem;
+      background: linear-gradient(to bottom, rgba(26,43,76,0.85) 70%, transparent);
+      pointer-events: auto;
+    }
+    #hud-title { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em; color: var(--amber); }
+    #back-btn-ar {
+      background: transparent;
+      border: 1px solid rgba(245,247,250,0.4);
+      color: var(--light-bg);
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #distance-display {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 10;
+      background: linear-gradient(to top, rgba(26,43,76,0.9) 70%, transparent);
+      padding: 1.25rem 1.25rem 2rem;
+      display: none;
+      flex-direction: column;
+      gap: 0.75rem;
+      pointer-events: auto;
+    }
+    #dist-value {
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--amber);
+      line-height: 1;
+    }
+    #dist-label { font-size: 0.78rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.08em; }
+    #area-row {
+      display: none;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    #area-value {
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--light-bg);
+    }
+    #area-label { font-size: 0.75rem; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.08em; }
+    #point-count {
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+    #reset-btn {
+      align-self: flex-start;
+      background: transparent;
+      border: 1px solid rgba(232,160,32,0.6);
+      color: var(--amber);
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    canvas#ar-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: none;
+    }
+    #tap-hint {
+      position: fixed;
+      bottom: 50%;
+      left: 50%;
+      transform: translate(-50%, 50%);
+      z-index: 5;
+      font-size: 0.85rem;
+      opacity: 0.7;
+      pointer-events: none;
+      display: none;
+      background: rgba(26,43,76,0.7);
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Unsupported fallback -->
+<div id="unsupported">
+  <h1>WebXR AR 非対応</h1>
+  <p>このブラウザはWebXR ARに対応していません。<br>AndroidのChromeとARCoreが必要です。</p>
+  <a href="pwa_qr.html" class="btn btn-amber">QRコード案内ページへ</a>
+  <a href="tms_set_001.html" class="btn btn-outline">← 戻る</a>
+</div>
+
+<!-- Start screen -->
+<div id="start-screen">
+  <h1>ARコア計測モード</h1>
+  <p>WebXR ARを使用して実空間の寸法を計測します。<br>平面をスキャンしてタップで計測点を配置してください。</p>
+  <button class="btn btn-amber" id="start-ar-btn">AR計測を開始</button>
+  <a href="tms_set_001.html" class="btn btn-outline">← 戻る</a>
+</div>
+
+<!-- HUD (shown during AR session) -->
+<div id="hud">
+  <div id="hud-top">
+    <span id="hud-title">ARコア計測モード</span>
+    <button id="back-btn-ar">終了</button>
+  </div>
+</div>
+
+<!-- Canvas for WebGL/AR -->
+<canvas id="ar-canvas"></canvas>
+
+<div id="tap-hint">タップして計測点を配置</div>
+
+<!-- Distance display overlay -->
+<div id="distance-display">
+  <div id="dist-label">計測距離</div>
+  <div id="dist-value">—</div>
+  <div id="area-row">
+    <div id="area-label">推定面積</div>
+    <div id="area-value">—</div>
+  </div>
+  <div id="point-count">計測点: 0</div>
+  <button id="reset-btn">計測リセット</button>
+</div>
+
+<script>
+(async () => {
+  const unsupported = document.getElementById('unsupported');
+  const startScreen = document.getElementById('start-screen');
+  const hud = document.getElementById('hud');
+  const arCanvas = document.getElementById('ar-canvas');
+  const distDisplay = document.getElementById('distance-display');
+  const distValue = document.getElementById('dist-value');
+  const areaRow = document.getElementById('area-row');
+  const areaValue = document.getElementById('area-value');
+  const pointCount = document.getElementById('point-count');
+  const tapHint = document.getElementById('tap-hint');
+  const resetBtn = document.getElementById('reset-btn');
+  const backBtnAr = document.getElementById('back-btn-ar');
+  const startArBtn = document.getElementById('start-ar-btn');
+
+  // Check WebXR support
+  if (!navigator.xr) {
+    startScreen.style.display = 'none';
+    unsupported.style.display = 'flex';
+    return;
+  }
+
+  const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+  if (!supported) {
+    startScreen.style.display = 'none';
+    unsupported.style.display = 'flex';
+    return;
+  }
+
+  // State
+  let xrSession = null;
+  let gl = null;
+  let refSpace = null;
+  let hitTestSource = null;
+  let hitTestSourceRequested = false;
+  let reticleMatrix = null;
+  let measurePoints = []; // [{x,y,z}]
+  let reticleVisible = false;
+
+  // WebGL setup
+  function initGL() {
+    gl = arCanvas.getContext('webgl', { xrCompatible: true });
+  }
+
+  // Simple reticle drawing (ring using line loop)
+  let reticleProg = null;
+  let reticleVBO = null;
+
+  function initReticle() {
+    const vsSource = `
+      attribute vec3 aPos;
+      uniform mat4 uMatrix;
+      void main() { gl_Position = uMatrix * vec4(aPos, 1.0); }
+    `;
+    const fsSource = `
+      precision mediump float;
+      void main() { gl_FragColor = vec4(0.91, 0.63, 0.13, 0.9); }
+    `;
+    function compileShader(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    }
+    reticleProg = gl.createProgram();
+    gl.attachShader(reticleProg, compileShader(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(reticleProg, compileShader(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(reticleProg);
+
+    // Ring vertices (flat circle on XZ plane, radius 0.1)
+    const segments = 32;
+    const r = 0.1;
+    const verts = [];
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      verts.push(Math.cos(angle) * r, 0, Math.sin(angle) * r);
+    }
+    reticleVBO = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, reticleVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+  }
+
+  function mat4Multiply(a, b) {
+    const out = new Float32Array(16);
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++) {
+        let sum = 0;
+        for (let k = 0; k < 4; k++) sum += a[i * 4 + k] * b[k * 4 + j];
+        out[i * 4 + j] = sum;
+      }
+    return out;
+  }
+
+  function drawReticle(projMatrix, viewMatrix, modelMatrix) {
+    const mv = mat4Multiply(viewMatrix, modelMatrix);
+    const mvp = mat4Multiply(projMatrix, mv);
+    gl.useProgram(reticleProg);
+    gl.bindBuffer(gl.ARRAY_BUFFER, reticleVBO);
+    const aPos = gl.getAttribLocation(reticleProg, 'aPos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+    const uMatrix = gl.getUniformLocation(reticleProg, 'uMatrix');
+    gl.uniformMatrix4fv(uMatrix, false, mvp);
+    gl.lineWidth(2);
+    gl.drawArrays(gl.LINE_STRIP, 0, 33);
+  }
+
+  // Measurement point markers (small dots/crosses)
+  function drawPoints(projMatrix, viewMatrix) {
+    for (const pt of measurePoints) {
+      // Simple 4x4 identity model matrix placed at point
+      const model = new Float32Array([
+        0.05,0,0,0,
+        0,0.05,0,0,
+        0,0,0.05,0,
+        pt.x,pt.y,pt.z,1
+      ]);
+      drawReticle(projMatrix, viewMatrix, model);
+    }
+  }
+
+  function distance3D(a, b) {
+    return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2);
+  }
+
+  function shoelaceArea(pts) {
+    // Project onto XZ plane for area estimate
+    let area = 0;
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      area += pts[i].x * pts[j].z;
+      area -= pts[j].x * pts[i].z;
+    }
+    return Math.abs(area) / 2;
+  }
+
+  function updateUI() {
+    const n = measurePoints.length;
+    pointCount.textContent = `計測点: ${n}`;
+    if (n >= 2) {
+      const d = distance3D(measurePoints[n-2], measurePoints[n-1]);
+      distValue.textContent = d.toFixed(2) + ' m';
+    } else {
+      distValue.textContent = '—';
+    }
+    if (n >= 3) {
+      const area = shoelaceArea(measurePoints);
+      areaValue.textContent = area.toFixed(2) + ' m²';
+      areaRow.style.display = 'flex';
+    } else {
+      areaRow.style.display = 'none';
+    }
+  }
+
+  function onSessionEnd() {
+    xrSession = null;
+    hitTestSource = null;
+    hitTestSourceRequested = false;
+    hud.style.display = 'none';
+    arCanvas.style.display = 'none';
+    distDisplay.style.display = 'none';
+    tapHint.style.display = 'none';
+    startScreen.style.display = 'flex';
+  }
+
+  async function startAR() {
+    try {
+      xrSession = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay'],
+        domOverlay: { root: document.body }
+      });
+    } catch (e) {
+      console.error('AR session failed:', e);
+      alert('ARセッションの開始に失敗しました。');
+      return;
+    }
+
+    initGL();
+    await gl.makeXRCompatible();
+    xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, gl) });
+
+    refSpace = await xrSession.requestReferenceSpace('local');
+
+    initReticle();
+
+    startScreen.style.display = 'none';
+    hud.style.display = 'block';
+    arCanvas.style.display = 'block';
+    distDisplay.style.display = 'flex';
+    tapHint.style.display = 'block';
+
+    xrSession.addEventListener('end', onSessionEnd);
+
+    // Handle tap
+    xrSession.addEventListener('select', () => {
+      if (reticleVisible && reticleMatrix) {
+        measurePoints.push({
+          x: reticleMatrix[12],
+          y: reticleMatrix[13],
+          z: reticleMatrix[14]
+        });
+        updateUI();
+      }
+    });
+
+    xrSession.requestAnimationFrame(onXRFrame);
+  }
+
+  function onXRFrame(time, frame) {
+    xrSession.requestAnimationFrame(onXRFrame);
+
+    const session = frame.session;
+    const layer = session.renderState.baseLayer;
+    const pose = frame.getViewerPose(refSpace);
+
+    // Hit test source setup
+    if (!hitTestSourceRequested) {
+      session.requestReferenceSpace('viewer').then(viewerSpace => {
+        session.requestHitTestSource({ space: viewerSpace }).then(src => {
+          hitTestSource = src;
+        });
+      });
+      hitTestSourceRequested = true;
+    }
+
+    // Check hit test results
+    reticleVisible = false;
+    if (hitTestSource && frame.getHitTestResults) {
+      const hits = frame.getHitTestResults(hitTestSource);
+      if (hits.length > 0) {
+        const hitPose = hits[0].getPose(refSpace);
+        if (hitPose) {
+          reticleMatrix = hitPose.transform.matrix;
+          reticleVisible = true;
+        }
+      }
+    }
+
+    if (!pose) return;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+
+    for (const view of pose.views) {
+      const viewport = layer.getViewport(view);
+      gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+      const proj = view.projectionMatrix;
+      const viewMat = view.transform.inverse.matrix;
+
+      if (reticleVisible && reticleMatrix) {
+        drawReticle(proj, viewMat, reticleMatrix);
+      }
+      drawPoints(proj, viewMat);
+    }
+  }
+
+  startArBtn.addEventListener('click', startAR);
+
+  resetBtn.addEventListener('click', () => {
+    measurePoints = [];
+    updateUI();
+  });
+
+  backBtnAr.addEventListener('click', () => {
+    if (xrSession) xrSession.end();
+    else onSessionEnd();
+  });
+})();
+</script>
+</body>
+</html>
