@@ -573,6 +573,53 @@ CEO判断：要 / 不要
 
 ---
 
+## [G2-004] 2026-06-05 — MARKETING X投稿API連携 + スケジューラーStep3完成
+
+### 追加・更新
+- `src/marketing/x_poster.py`（新規）— X(Twitter) API v2 OAuth 1.0a投稿クライアント
+  - 5環境変数（X_BEARER_TOKEN/X_API_KEY/X_API_SECRET/X_ACCESS_TOKEN/X_ACCESS_TOKEN_SECRET）
+  - 未設定時は自動モックモード
+  - stdlib only（`urllib.request` + `hmac` + `hashlib`）
+  - 140文字超トランケート / エラー時モックフォールバック
+- `src/marketing/scheduler.py` — Step3 X投稿実行追加
+  - `XPoster.post()` 呼び出し → `DeliveryLog.add()` 記録
+  - `ScheduleRun.x_posts_sent` カウント追加
+- `src/marketing/api.py` — POST `/x/post` エンドポイント追加
+- `tests/test_marketing_integration.py` — TestXPoster 9テスト追加（計39件）
+
+### CI/テスト状況（全Pass）
+- test_marketing_integration: **39件** ✅（+9件）
+- bandit: High:0 / Medium:0 ✅
+
+---
+
+## [G2-005] 2026-06-05 — GOVモジュール実装（S10/FinOps/稼働ログ）
+
+### 追加
+- `src/gov/s10_coo_report.py` — S10 COO業務報告エンジン
+  - KPIRecord: 達成率・達成判定
+  - BudgetRecord: 予実差異・執行率
+  - PMOTask: gate別タスク管理（G0〜G4）、ステータス管理
+  - COOReport: 月次レポート生成・kpi/budget/pmoサマリー
+- `src/gov/finops_monitor.py` — FinOps監視エンジン
+  - 1配送¥0.5超アラート（`cost_per_delivery_exceeded`）
+  - 月次予算80%消化警告（`monthly_budget_warning`）
+  - 月次予算¥5,000超過アラート（`monthly_budget_exceeded`）
+- `src/gov/ops_log_collector.py` — 稼働ログ収集エンジン
+  - 対象: sbds/surplus_shift/research/marketing/gov（5サービス）
+  - ログレベル: info/warning/error
+  - `health_status()`: サービス別ヘルス状態（is_healthy: error件数0判定）
+- `src/gov/api.py` — GOV HTTP API（Cloud Run）
+  - GET/POST各種エンドポイント（COO/FinOps/OpsLog）
+- `src/gov/__init__.py` — 全クラスエクスポート
+- `tests/test_gov.py` — 35テスト（COO14/FinOps10/OpsLog11）
+
+### CI/テスト状況（全Pass）
+- test_gov: **35件** ✅（新規）
+- bandit: High:0 / Medium:0 ✅
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
