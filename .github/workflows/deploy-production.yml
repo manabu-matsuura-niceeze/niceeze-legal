@@ -1,0 +1,92 @@
+name: "NiceEze Deploy — 本番（手動・CEO承認必須）"
+
+# 本番デプロイは手動トリガーのみ。自動本番デプロイ禁止。
+# 実際のCloud Runデプロイはgcp-credentialsシークレット設定後に有効化
+
+on:
+  workflow_dispatch:
+    inputs:
+      approved_by:
+        description: "承認者名（松浦CEO）"
+        required: true
+        type: string
+      confirm:
+        description: "最終確認"
+        required: true
+        type: choice
+        options:
+          - "本番デプロイを承認する"
+          - "キャンセル"
+
+jobs:
+  validate-approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 承認確認
+        run: |
+          if [ "${{ inputs.confirm }}" != "本番デプロイを承認する" ]; then
+            echo "承認が確認できません。デプロイを中止します。"
+            exit 1
+          fi
+          if [ -z "${{ inputs.approved_by }}" ]; then
+            echo "承認者名を入力してください。"
+            exit 1
+          fi
+          echo "承認者: ${{ inputs.approved_by }}"
+          echo "承認時刻: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: validate-approval
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install python-docx python-pptx bandit
+
+      - name: Final gate — Run test_research
+        run: python -m unittest tests.test_research -v
+
+      - name: Final gate — Run test_marketing_integration
+        run: python -m unittest tests.test_marketing_integration -v
+
+      - name: Final gate — Run test_surplus_gate
+        run: python -m unittest tests.test_surplus_gate -v
+
+      - name: Final gate — Run test_audit
+        run: python -m unittest tests.test_audit -v
+
+      - name: Final gate — Security scan (bandit)
+        run: bandit -r src/ -ll
+
+      - name: 本番デプロイ承認済み確認
+        run: |
+          echo "=== 本番デプロイ承認済み ==="
+          echo "承認者: ${{ inputs.approved_by }}"
+
+      - name: GCP Cloud Run デプロイコマンド（参考）
+        run: |
+          echo "# 実際のCloud Runデプロイコマンド（GCP認証設定後に有効化）:"
+          echo "# gcloud run deploy niceeze-research --image gcr.io/PROJECT_ID/niceeze-research:latest --region asia-northeast1"
+          echo "# gcloud run deploy niceeze-marketing --image gcr.io/PROJECT_ID/niceeze-marketing:latest --region asia-northeast1"
+
+      - name: 本番デプロイサマリー
+        run: |
+          echo "=============================="
+          echo "  本番デプロイ完了サマリー"
+          echo "=============================="
+          echo "承認者     : ${{ inputs.approved_by }}"
+          echo "コミット   : ${{ github.sha }}"
+          echo "実行者     : ${{ github.actor }}"
+          echo "デプロイ時刻: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "テスト     : PASSED"
+          echo "セキュリティ: PASSED"
+          echo "NOTE: 実際のGCP Cloud Runデプロイには"
+          echo "      GCP_SA_KEY シークレットの設定が必要です。"
+          echo "=============================="
