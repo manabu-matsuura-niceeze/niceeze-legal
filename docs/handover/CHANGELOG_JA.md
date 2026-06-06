@@ -644,6 +644,42 @@ CEO判断：要 / 不要
 
 ---
 
+## [G2-006] 2026-06-06 — 手ぶら旅行システム 2拠点間連携API実装
+
+### 追加（SBDS部門）
+- `src/sbds/travel_qr.py` — QR都度発行・有効期限管理
+  - `TravelQRManager.issue()`: `secrets.token_urlsafe` でトークン生成、24h TTL
+  - `scan()`: トークン検証・is_valid確認・status='used'更新
+  - `expire_old()`: 期限切れQR自動更新
+  - `cancel()` / `get_by_hub()` / `summary()`
+- `src/sbds/hub_webhook.py` — 出発拠点→中央サーバー→到着拠点Webhook連携
+  - `HubWebhookClient`: `HUB_WEBHOOK_URLS` 環境変数未設定でmock_mode自動切替
+  - `notify_dispatch()` / `notify_arrival()` / `get_history()` / `summary()`
+  - stdlib only (`urllib.request`), timeout 10秒, エラーフォールバック付き
+- `src/sbds/ai_support.py` — AIサポートセンター骨格（多言語対応）
+  - 対応言語: ja / en / zh / ko（4言語）
+  - MVPはテンプレートベース応答（G3でClaude API実連携予定）
+  - `ANTHROPIC_API_KEY` 未設定でテンプレートモード自動切替
+  - FAQ カテゴリ: baggage_tracking / delivery_schedule / lost_baggage / hub_location / general
+- `src/sbds/travel_pdf.py` — 紙QR印刷用HTML自動生成
+  - stdlib only（reportlab/qrcode等の外部ライブラリ不使用）
+  - SHA-256ハッシュから21×21 QR様パターン生成
+  - `@media print` CSS付き印刷用HTML出力（旅行者がブラウザからPDF印刷）
+  - 4言語テキスト（ja/en/zh/ko）含む
+- `src/sbds/travel_api.py` — 統合HTTP API（port 8083）
+  - GET /health, POST /qr/issue, POST /qr/scan, GET /qr/{qr_id}
+  - POST /webhook/dispatch, POST /webhook/arrival
+  - POST /support/ask, GET /support/health, GET /pdf/{qr_id}?lang=ja
+- `src/sbds/__init__.py` 更新: travel系クラス全エクスポート追加
+- `tests/test_travel.py`: 51テスト（QR18/Webhook10/AISupport13/PDF9/API1）
+
+### CI/テスト状況（全Pass）
+- test_travel: **51件** ✅（新規）
+- **全テスト合計: 331件** ✅（+51件）
+- bandit: High:0 / Medium:0 ✅
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
