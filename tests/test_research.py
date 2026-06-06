@@ -338,5 +338,198 @@ class TestTrendFetcher(unittest.TestCase):
             self.assertEqual(len(trend.data_points), TREND_WINDOW_DAYS)
 
 
+# ─────────────────────────────────────────────
+# ResearchAnalytics テスト
+# ─────────────────────────────────────────────
+from src.research.analytics import (
+    ResearchAnalytics,
+    PriceTrendResult,
+    RankingEntry,
+    GrowthAlert,
+    NewProduct,
+)
+
+
+class TestResearchAnalytics(unittest.TestCase):
+    def setUp(self):
+        self.analytics = ResearchAnalytics()
+
+    def test_price_trend_returns_list_of_price_trend_result(self):
+        results = self.analytics.price_trend('日用品・消耗品', 30)
+        self.assertIsInstance(results, list)
+        self.assertGreater(len(results), 0)
+        for r in results:
+            self.assertIsInstance(r, PriceTrendResult)
+
+    def test_price_trend_week_change_pct_is_float(self):
+        results = self.analytics.price_trend('食品・飲料', 30)
+        for r in results:
+            self.assertIsInstance(r.week_change_pct, float)
+
+    def test_ranking_returns_ranking_entry_list(self):
+        results = self.analytics.ranking('family', 10)
+        self.assertIsInstance(results, list)
+        for entry in results:
+            self.assertIsInstance(entry, RankingEntry)
+
+    def test_ranking_is_sorted_by_rank(self):
+        results = self.analytics.ranking('family', 10)
+        ranks = [e.rank for e in results]
+        self.assertEqual(ranks, sorted(ranks))
+
+    def test_ranking_invalid_building_type_returns_empty(self):
+        results = self.analytics.ranking('invalid', 10)
+        self.assertEqual(results, [])
+
+    def test_growth_alerts_returns_list_of_growth_alert(self):
+        results = self.analytics.growth_alerts()
+        self.assertIsInstance(results, list)
+        for alert in results:
+            self.assertIsInstance(alert, GrowthAlert)
+
+    def test_growth_alerts_threshold_zero_returns_all(self):
+        results = self.analytics.growth_alerts(threshold=0.0)
+        self.assertGreater(len(results), 0)
+
+    def test_growth_alerts_threshold_respected(self):
+        threshold = 0.5
+        results = self.analytics.growth_alerts(threshold=threshold)
+        for alert in results:
+            self.assertGreaterEqual(alert.growth_rate, threshold)
+
+    def test_new_products_returns_list_of_new_product(self):
+        results = self.analytics.new_products(30)
+        self.assertIsInstance(results, list)
+        self.assertGreater(len(results), 0)
+        for p in results:
+            self.assertIsInstance(p, NewProduct)
+
+    def test_new_products_days_zero_returns_empty(self):
+        results = self.analytics.new_products(0)
+        self.assertEqual(results, [])
+
+    def test_export_csv_returns_str_with_comma(self):
+        results = self.analytics.price_trend('日用品・消耗品', 30)
+        data = {'data': [r.to_dict() for r in results], 'count': len(results), 'generated_at': '2026-06-06'}
+        csv_str = self.analytics.export_csv(data)
+        self.assertIsInstance(csv_str, str)
+        self.assertIn(',', csv_str)
+
+    def test_export_summary_returns_str(self):
+        results = self.analytics.price_trend('日用品・消耗品', 30)
+        data = {'data': [r.to_dict() for r in results], 'count': len(results), 'generated_at': '2026-06-06'}
+        summary = self.analytics.export_summary(data)
+        self.assertIsInstance(summary, str)
+        self.assertGreater(len(summary), 0)
+
+    def test_price_trend_unknown_category_returns_empty(self):
+        results = self.analytics.price_trend('存在しないカテゴリ', 30)
+        self.assertEqual(results, [])
+
+    def test_new_products_trend_direction_valid(self):
+        results = self.analytics.new_products(30)
+        for p in results:
+            self.assertIn(p.trend_direction, ('rising', 'stable', 'falling'))
+
+    def test_ranking_limit_respected(self):
+        results = self.analytics.ranking('family', 2)
+        self.assertLessEqual(len(results), 2)
+
+
+# ─────────────────────────────────────────────
+# TestResearchAPIv1 (HTTP Server tests)
+# ─────────────────────────────────────────────
+import json
+import threading
+import urllib.parse
+import urllib.request
+import urllib.error
+from http.server import HTTPServer
+from src.research.api import ResearchHandler
+
+_API_PORT = 18090
+
+
+def _start_test_server() -> HTTPServer:
+    server = HTTPServer(('127.0.0.1', _API_PORT), ResearchHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server
+
+
+class TestResearchAPIv1(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.server = _start_test_server()
+        import time
+        time.sleep(0.2)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+
+    def _get(self, path: str) -> tuple[int, dict]:
+        url = f'http://127.0.0.1:{_API_PORT}{path}'
+        req = urllib.request.Request(url)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return resp.status, json.loads(resp.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode('utf-8'))
+
+    def _post(self, path: str, body: dict, token: str = '') -> tuple[int, dict]:
+        url = f'http://127.0.0.1:{_API_PORT}{path}'
+        data = json.dumps(body).encode('utf-8')
+        headers = {'Content-Type': 'application/json', 'Content-Length': str(len(data))}
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return resp.status, json.loads(resp.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode('utf-8'))
+
+    def test_price_trend_returns_200_with_data(self):
+        qs = urllib.parse.urlencode({'category': '日用品・消耗品', 'days': 30})
+        status, body = self._get(f'/api/v1/research/price-trend?{qs}')
+        self.assertEqual(status, 200)
+        self.assertIn('data', body)
+        self.assertIsInstance(body['data'], list)
+
+    def test_ranking_returns_200_with_data(self):
+        status, body = self._get('/api/v1/research/ranking?building_type=family')
+        self.assertEqual(status, 200)
+        self.assertIn('data', body)
+        self.assertIsInstance(body['data'], list)
+
+    def test_growth_alert_returns_200(self):
+        status, body = self._get('/api/v1/research/growth-alert')
+        self.assertEqual(status, 200)
+        self.assertIn('data', body)
+
+    def test_new_products_returns_200(self):
+        status, body = self._get('/api/v1/research/new-products')
+        self.assertEqual(status, 200)
+        self.assertIn('data', body)
+
+    def test_export_with_valid_token_returns_200(self):
+        status, body = self._post(
+            '/api/v1/research/export',
+            {'format': 'csv', 'category': '日用品・消耗品', 'days': 30},
+            token='demo-token',
+        )
+        self.assertEqual(status, 200)
+        self.assertIn('content', body)
+
+    def test_export_without_token_returns_401(self):
+        status, body = self._post(
+            '/api/v1/research/export',
+            {'format': 'csv', 'category': '日用品・消耗品', 'days': 30},
+            token='',
+        )
+        self.assertEqual(status, 401)
+
+
 if __name__ == '__main__':
     unittest.main()
