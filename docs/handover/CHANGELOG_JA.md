@@ -680,6 +680,48 @@ CEO判断：要 / 不要
 
 ---
 
+## [UAT-001] 2026-06-06 — 本番前 UAT/画面レビュー環境構築
+
+### 追加
+- `docs/staging_portal.html` — 全6システム統合ポータル
+  - NiceEzeブランドカラー（#202533 / #EC6D74 / #6EA7DB）完全準拠
+  - CSS Grid レスポンシブ（スマホ1カラム / PC 2カラム）
+  - 全6システムカード + 「▶ 起動確認」ボタン（/healthリンク）
+  - 起動コマンド・ポート番号明記
+- `docs/UAT_checklist.md` — CEOレビュー用チェックリスト
+  - スマホ（iPhone Safari）操作前提 / ステップバイステップ
+  - 各システム5項目以上 / curl + ブラウザURL両記載
+  - デモデータ投入確認・最終CEOサイン欄
+- `scripts/seed_demo_data.py` — デモデータ投入スクリプト
+  - RESEARCH: 6キーワード×価格・トレンドデータ
+  - SURPLUS: Gate A(5 ASIN) + 商談3件(draft/approved/sent)
+  - MARKETING: 5トピック コンテンツ生成・配信ログ
+  - GOV: KPI3件 / 予実3件 / PMOタスク3件 / FinOps記録
+  - TRAVEL: QR10件 + AIサポート動作確認
+  - 全5システム完走確認済み（try-except継続実行）
+- `scripts/start_all_staging.sh` — 全システム一括起動
+  - 4サービス起動（RESEARCH/MARKETING/GOV/TRAVEL）
+  - /health確認 + PID管理 + ログ出力
+  - SBDS/SURPLUS は G3実装予定として案内
+- `scripts/stop_all_staging.sh` — 全システム停止
+
+### 実行方法（CEO向け）
+```bash
+# 1. 全システム起動
+bash scripts/start_all_staging.sh
+
+# 2. デモデータ投入
+python scripts/seed_demo_data.py
+
+# 3. ポータルを開く
+open docs/staging_portal.html
+
+# 4. 停止
+bash scripts/stop_all_staging.sh
+```
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
