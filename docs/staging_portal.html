@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NiceEze 自律経営執行システム — ステージング環境</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #202533;
+      color: #F0F4F8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #2C3347 0%, #202533 100%);
+      border-bottom: 2px solid #EC6D74;
+      padding: 20px 24px;
+      text-align: center;
+    }
+
+    header .logo {
+      font-size: 13px;
+      color: #6EA7DB;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    header h1 {
+      font-size: clamp(18px, 4vw, 26px);
+      font-weight: 700;
+      color: #F0F4F8;
+      line-height: 1.3;
+    }
+
+    header .badge {
+      display: inline-block;
+      margin-top: 10px;
+      background: #EC6D74;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      padding: 3px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    /* ── Main ──────────────────────────────────── */
+    main {
+      flex: 1;
+      padding: 24px 16px;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-title {
+      font-size: 12px;
+      color: #6EA7DB;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2C3347;
+    }
+
+    /* ── Grid ──────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* ── Card ──────────────────────────────────── */
+    .card {
+      background: #2C3347;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border: 1px solid rgba(110, 167, 219, 0.15);
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .card:hover {
+      border-color: rgba(110, 167, 219, 0.45);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-icon {
+      font-size: 28px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .card-title-group {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #F0F4F8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-sub {
+      font-size: 12px;
+      color: #6EA7DB;
+      margin-top: 2px;
+    }
+
+    .card-port {
+      background: rgba(236, 109, 116, 0.15);
+      border: 1px solid rgba(236, 109, 116, 0.35);
+      color: #EC6D74;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: #a8b4c4;
+      line-height: 1.6;
+    }
+
+    .cmd-label {
+      font-size: 11px;
+      color: #6EA7DB;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .cmd-block {
+      background: #1a1f2e;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 12px;
+      color: #a8e6a3;
+      overflow-x: auto;
+      white-space: nowrap;
+      border: 1px solid rgba(168, 230, 163, 0.1);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-launch {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #6EA7DB;
+      color: #202533;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 9px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+      flex: 1;
+      justify-content: center;
+      min-width: 120px;
+    }
+
+    .btn-launch:hover {
+      background: #88bde8;
+      transform: scale(1.02);
+    }
+
+    .btn-health {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      color: #6EA7DB;
+      border: 1px solid #6EA7DB;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-health:hover {
+      background: rgba(110, 167, 219, 0.12);
+    }
+
+    /* ── Footer ─────────────────────────────────── */
+    footer {
+      background: #2C3347;
+      border-top: 1px solid rgba(110, 167, 219, 0.15);
+      text-align: center;
+      padding: 16px 24px;
+      font-size: 12px;
+      color: #6b7a90;
+    }
+
+    footer strong {
+      color: #EC6D74;
+    }
+
+    /* ── Status indicator ────────────────────────── */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #a8e6a3;
+      display: inline-block;
+      margin-right: 4px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ── Info bar ────────────────────────────────── */
+    .info-bar {
+      background: rgba(110, 167, 219, 0.08);
+      border: 1px solid rgba(110, 167, 219, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #a8b4c4;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .info-bar code {
+      background: #1a1f2e;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #a8e6a3;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">NiceEze Autonomous Management System</div>
+  <h1>自律経営執行システム — ステージング環境</h1>
+  <span class="badge"><span class="status-dot"></span>UAT 実施中</span>
+</header>
+
+<main>
+  <div class="info-bar">
+    全システムを起動するには: <code>bash scripts/start_all_staging.sh</code>
+    &nbsp;|&nbsp;
+    スマホ確認用ローカルIP: <code>ifconfig | grep "inet "</code>
+    &nbsp;|&nbsp;
+    確認手順: <code>docs/UAT_checklist.md</code>
+  </div>
+
+  <p class="section-title">稼働システム一覧 — 6 サービス</p>
+
+  <div class="grid">
+
+    <!-- SBDS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">📦</div>
+        <div class="card-title-group">
+          <div class="card-name">SBDS</div>
+          <div class="card-sub">配送管理システム</div>
+        </div>
+        <div class="card-port">PORT 8084</div>
+      </div>
+      <div class="card-desc">
+        ホテル館内ラストワンマイル配送の自律管理。配送ルート最適化・TMS連携・リアルタイム追跡を担当。
+      </div>
+      <div>
+        <div class="cmd-label">起動コマンド</div>
+        <div class="cmd-block">python -m src.sbds.tms_server</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn-launch" href="http://localhost:8084/health" target="_blank">▶ 起動確認</a>
+        <a class="btn-health" href="http://localhost:8084/health" target="_blank">/health</a>
+      </div>
+    </div>
+
+    <!-- SURPLUS SHIFT -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">♻️</div>
+        <div class="card-title-group">
+          <div class="card-name">SURPLUS SHIFT</div>
+          <div class="card-sub">余剰在庫転換システム</div>
+        </div>
+        <div class="card-port">PORT 8085</div>
+      </div>
+      <div class="card-desc">
+        余剰在庫を Amazon / メルカリ等へ自律転換。Keepa価格分析・Gate A〜D のマルチゲート審査フロー。
+      </div>
+      <div>
+        <div class="cmd-label">起動コマンド</div>
+        <div class="cmd-block">python -m src.surplus_shift.surplus_server</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn-launch" href="http://localhost:8085/health" target="_blank">▶ 起動確認</a>
+        <a class="btn-health" href="http://localhost:8085/health" target="_blank">/health</a>
+      </div>
+    </div>
+
+    <!-- RESEARCH -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🔍</div>
+        <div class="card-title-group">
+          <div class="card-name">RESEARCH</div>
+          <div class="card-sub">市場調査システム</div>
+        </div>
+        <div class="card-port">PORT 8080</div>
+      </div>
+      <div class="card-desc">
+        日用品・消耗品の価格マトリクス取得とトレンドスコア算出。仕入れ意思決定を自律支援。
+      </div>
+      <div>
+        <div class="cmd-label">起動コマンド</div>
+        <div class="cmd-block">python -m src.research.api</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn-launch" href="http://localhost:8080/health" target="_blank">▶ 起動確認</a>
+        <a class="btn-health" href="http://localhost:8080/health" target="_blank">/health</a>
+      </div>
+    </div>
+
+    <!-- MARKETING -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">📣</div>
+        <div class="card-title-group">
+          <div class="card-name">MARKETING</div>
+          <div class="card-sub">マーケティング自動化</div>
+        </div>
+        <div class="card-port">PORT 8081</div>
+      </div>
+      <div class="card-desc">
+        SNSコンテンツ自動生成・X（旧Twitter）投稿・配信ログ管理。トレンド連動の自律マーケ実行。
+      </div>
+      <div>
+        <div class="cmd-label">起動コマンド</div>
+        <div class="cmd-block">python -m src.marketing.api</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn-launch" href="http://localhost:8081/health" target="_blank">▶ 起動確認</a>
+        <a class="btn-health" href="http://localhost:8081/health" target="_blank">/health</a>
+      </div>
+    </div>
+
+    <!-- GOV -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🏛️</div>
+        <div class="card-title-group">
+          <div class="card-name">GOV</div>
+          <div class="card-sub">経営管理システム</div>
+        </div>
+        <div class="card-port">PORT 8082</div>
+      </div>
+      <div class="card-desc">
+        COOレポート自動生成・KPI/予算管理・FinOpsコスト監視・PMOタスク追跡。経営ガバナンスの自律化。
+      </div>
+      <div>
+        <div class="cmd-label">起動コマンド</div>
+        <div class="cmd-block">python -m src.gov.api</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn-launch" href="http://localhost:8082/health" target="_blank">▶ 起動確認</a>
+        <a class="btn-health" href="http://localhost:8082/health" target="_blank">/health</a>
+      </div>
+    </div>
+
+    <!-- TRAVEL -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">✈️</div>
+        <div class="card-title-group">
+          <div class="card-name">TRAVEL</div>
+          <div class="card-sub">手ぶら旅行サービス</div>
+        </div>
+        <div class="card-port">PORT 8083</div>
+      </div>
+      <div class="card-desc">
+        ホテル荷物の事前配送・手ぶら旅行体験の実現。SBDSとの連携で到着前デリバリーを自律実行。
+      </div>
+      <div>
+        <div class="cmd-label">起動コマンド</div>
+        <div class="cmd-block">python -m src.sbds.travel_api</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn-launch" href="http://localhost:8083/health" target="_blank">▶ 起動確認</a>
+        <a class="btn-health" href="http://localhost:8083/health" target="_blank">/health</a>
+      </div>
+    </div>
+
+  </div><!-- /.grid -->
+</main>
+
+<footer>
+  <strong>UAT実施中 — CEO確認専用</strong>
+  &nbsp;|&nbsp;
+  生成日時: <span id="ts"></span>
+  &nbsp;|&nbsp;
+  NiceEze Inc. &copy; 2026
+</footer>
+
+<script>
+  // 生成日時を動的に表示
+  document.getElementById('ts').textContent = new Date().toLocaleString('ja-JP', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+</script>
+
+</body>
+</html>
