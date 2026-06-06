@@ -8,6 +8,7 @@ SBDS部門 MVP
 # POST /webhook/dispatch        → body:{qr_id, baggage_details:{}}
 # POST /webhook/arrival         → body:{qr_id}
 # POST /support/ask             → body:{language,category,message,qr_id?}
+# POST /support/unlock-request  → body:{token,lang,auto_approve}
 # GET  /support/health          → AISupportCenter.health_check()
 # GET  /pdf/{qr_id}?lang=ja     → QR印刷用HTML返却（Content-Type: text/html）
 """
@@ -163,6 +164,18 @@ class TravelHandler(BaseHTTPRequestHandler):
             )
             response = _ai_support.respond(request)
             self._send_json(200, response.to_dict())
+
+        elif path == '/support/unlock-request':
+            body = self._read_json_body()
+            token = body.get('token', '')
+            lang = body.get('lang', 'ja')
+            auto_approve = bool(body.get('auto_approve', False))
+            result = _ai_support.unlock_request(
+                qr_token=token,
+                requester_language=lang,
+                auto_approve=auto_approve,
+            )
+            self._send_json(200, result)
 
         else:
             self._send_json(404, {'error': 'Not Found', 'path': self.path})

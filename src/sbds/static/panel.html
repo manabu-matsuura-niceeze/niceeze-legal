@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NiceEze タッチパネル</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1f2e;
+      color: #ffffff;
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* ── ヘッダー ── */
+    header {
+      background: #111623;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #EC6D74;
+    }
+    .logo {
+      font-size: 32px;
+      font-weight: 900;
+      color: #EC6D74;
+      letter-spacing: 2px;
+    }
+    .logo span { color: #6EA7DB; }
+    #clock {
+      font-size: 22px;
+      color: #aab4cc;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── メインコンテンツ ── */
+    main {
+      flex: 1;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      color: #aab4cc;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    /* ── ボタン共通 ── */
+    .main-btn {
+      width: 100%;
+      min-height: 200px;
+      border: none;
+      border-radius: 16px;
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+      touch-action: manipulation;
+    }
+    .main-btn:active { filter: brightness(0.85); transform: scale(0.98); }
+
+    .btn-support { background: #EC6D74; }
+    .btn-unlock  { background: #6EA7DB; }
+    .btn-qrcheck { background: #4a5568; }
+
+    /* ── フォームカード ── */
+    .card {
+      background: #222840;
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    select, input[type="text"], textarea {
+      width: 100%;
+      background: #1a1f2e;
+      border: 2px solid #3a4460;
+      border-radius: 10px;
+      color: #ffffff;
+      font-size: 22px;
+      padding: 14px 16px;
+      margin-top: 10px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    select:focus, input[type="text"]:focus, textarea:focus {
+      border-color: #6EA7DB;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+
+    label { font-size: 18px; color: #aab4cc; display: block; margin-top: 14px; }
+    label:first-child { margin-top: 0; }
+
+    /* ── 送信ボタン ── */
+    .submit-btn {
+      margin-top: 18px;
+      width: 100%;
+      padding: 18px;
+      border: none;
+      border-radius: 12px;
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .submit-support { background: #EC6D74; }
+    .submit-unlock  { background: #6EA7DB; }
+    .submit-qr      { background: #4a5568; }
+    .submit-btn:active { filter: brightness(0.85); }
+
+    /* ── 応答エリア ── */
+    #response-area {
+      background: #222840;
+      border-radius: 16px;
+      padding: 24px;
+      min-height: 80px;
+      font-size: 22px;
+      line-height: 1.6;
+      border: 2px solid #3a4460;
+      display: none;
+    }
+    #response-area.visible { display: block; }
+    #response-area.error { border-color: #EC6D74; color: #EC6D74; }
+    #response-area.success { border-color: #6EA7DB; }
+
+    /* ── フッター ── */
+    footer {
+      background: #111623;
+      border-top: 1px solid #2a3050;
+      padding: 16px 24px;
+      text-align: center;
+      font-size: 15px;
+      color: #5a6480;
+    }
+
+    /* ── アコーディオン ── */
+    .accordion-body { display: none; }
+    .accordion-body.open { display: block; }
+    .accordion-toggle { cursor: pointer; user-select: none; }
+    .toggle-icon { font-size: 20px; float: right; transition: transform 0.2s; }
+    .accordion-toggle.active .toggle-icon { transform: rotate(180deg); }
+  </style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header>
+  <div class="logo">Nice<span>Eze</span></div>
+  <div id="clock">--:--:--</div>
+</header>
+
+<main>
+
+  <!-- ① サポートを呼ぶ -->
+  <div>
+    <div class="card">
+      <div class="section-title accordion-toggle" onclick="toggleAccordion('support-form', this)">
+        サポートを呼ぶ / Ask Support
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="accordion-body open" id="support-form">
+        <label>言語 / Language</label>
+        <select id="support-lang">
+          <option value="ja">日本語</option>
+          <option value="en">English</option>
+          <option value="zh-CN">中文（简体）</option>
+          <option value="zh-TW">中文（繁體）</option>
+          <option value="ko">한국어</option>
+          <option value="th">ภาษาไทย</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="es">Español</option>
+          <option value="pt">Português</option>
+        </select>
+
+        <label>カテゴリ / Category</label>
+        <select id="support-cat">
+          <option value="general">一般問い合わせ / General</option>
+          <option value="baggage_tracking">荷物追跡 / Tracking</option>
+          <option value="lost_baggage">荷物紛失 / Lost Baggage</option>
+          <option value="delivery_schedule">配送スケジュール / Schedule</option>
+          <option value="hub_location">拠点案内 / Hub Info</option>
+        </select>
+
+        <label>メッセージ（省略可）/ Message (optional)</label>
+        <textarea id="support-msg" placeholder="ご質問をどうぞ…"></textarea>
+
+        <label>QR ID（省略可）/ QR ID (optional)</label>
+        <input type="text" id="support-qr" placeholder="QR ID">
+
+        <button class="submit-btn submit-support" onclick="submitSupport()">
+          サポートを呼ぶ / Call Support
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 解錠リクエスト -->
+  <div>
+    <div class="card">
+      <div class="section-title accordion-toggle" onclick="toggleAccordion('unlock-form', this)">
+        解錠リクエスト / Unlock Request
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="accordion-body" id="unlock-form">
+        <label>QRトークン / QR Token</label>
+        <input type="text" id="unlock-token" placeholder="QRトークンを入力">
+
+        <label>言語 / Language</label>
+        <select id="unlock-lang">
+          <option value="ja">日本語</option>
+          <option value="en">English</option>
+          <option value="zh-CN">中文（简体）</option>
+          <option value="zh-TW">中文（繁體）</option>
+          <option value="ko">한국어</option>
+          <option value="th">ภาษาไทย</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="es">Español</option>
+          <option value="pt">Português</option>
+        </select>
+
+        <button class="submit-btn submit-unlock" onclick="submitUnlock()">
+          解錠リクエスト送信 / Send Unlock Request
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ QR確認 -->
+  <div>
+    <div class="card">
+      <div class="section-title accordion-toggle" onclick="toggleAccordion('qrcheck-form', this)">
+        QR確認 / QR Check
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="accordion-body" id="qrcheck-form">
+        <label>QR IDまたはトークン / QR ID or Token</label>
+        <input type="text" id="qrcheck-token" placeholder="QR IDを入力">
+
+        <button class="submit-btn submit-qr" onclick="submitQRCheck()">
+          QRを確認 / Check QR
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 応答表示エリア -->
+  <div id="response-area" role="status" aria-live="polite"></div>
+
+</main>
+
+<!-- フッター -->
+<footer>
+  NiceEze 手ぶら旅行システム v2.0 &nbsp;|&nbsp; サポート: support@niceeze.com &nbsp;|&nbsp; 管理者: admin@niceeze.com
+</footer>
+
+<script>
+  'use strict';
+
+  // 時刻更新
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleTimeString('ja-JP', { hour12: false });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // アコーディオン
+  function toggleAccordion(id, toggle) {
+    const body = document.getElementById(id);
+    body.classList.toggle('open');
+    toggle.classList.toggle('active');
+  }
+
+  // 応答表示
+  function showResponse(text, isError) {
+    const el = document.getElementById('response-area');
+    el.textContent = text;
+    el.className = 'visible ' + (isError ? 'error' : 'success');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // エラーメッセージ（多言語）
+  const WAIT_MSGS = {
+    ja: 'しばらくお待ちください…',
+    en: 'Please wait a moment…',
+    'zh-CN': '请稍候…',
+    'zh-TW': '請稍候…',
+    ko: '잠시만 기다려 주세요…',
+    th: 'กรุณารอสักครู่…',
+    fr: 'Veuillez patienter…',
+    de: 'Bitte warten…',
+    es: 'Por favor espere…',
+    pt: 'Aguarde um momento…',
+  };
+  const ERROR_MSGS = {
+    ja: 'エラーが発生しました。しばらくお待ちください。',
+    en: 'An error occurred. Please wait a moment.',
+    'zh-CN': '发生错误。请稍候。',
+    'zh-TW': '發生錯誤。請稍候。',
+    ko: '오류가 발생했습니다. 잠시만 기다려 주세요.',
+    th: 'เกิดข้อผิดพลาด โปรดรอสักครู่',
+    fr: 'Une erreur est survenue. Veuillez patienter.',
+    de: 'Ein Fehler ist aufgetreten. Bitte warten.',
+    es: 'Se produjo un error. Por favor espere.',
+    pt: 'Ocorreu um erro. Aguarde um momento.',
+  };
+
+  function getLang(selectId) {
+    return document.getElementById(selectId).value || 'ja';
+  }
+  function errMsg(lang) { return ERROR_MSGS[lang] || ERROR_MSGS['ja']; }
+  function waitMsg(lang) { return WAIT_MSGS[lang] || WAIT_MSGS['ja']; }
+
+  const BASE = '/api/v1/travel';
+
+  // ① サポートを呼ぶ
+  async function submitSupport() {
+    const lang = getLang('support-lang');
+    showResponse(waitMsg(lang), false);
+    const payload = {
+      language: lang,
+      category: document.getElementById('support-cat').value,
+      message: document.getElementById('support-msg').value.trim(),
+      qr_id: document.getElementById('support-qr').value.trim(),
+    };
+    try {
+      const res = await fetch(BASE + '/support/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showResponse(data.error || errMsg(lang), true);
+      } else {
+        showResponse(data.response_text || JSON.stringify(data), false);
+      }
+    } catch (_) {
+      showResponse(errMsg(lang), true);
+    }
+  }
+
+  // ② 解錠リクエスト
+  async function submitUnlock() {
+    const lang = getLang('unlock-lang');
+    const token = document.getElementById('unlock-token').value.trim();
+    if (!token) {
+      showResponse('QRトークンを入力してください / Please enter QR token', true);
+      return;
+    }
+    showResponse(waitMsg(lang), false);
+    const payload = { token: token, lang: lang, auto_approve: false };
+    try {
+      const res = await fetch(BASE + '/support/unlock-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showResponse(data.error || errMsg(lang), true);
+      } else {
+        showResponse(data.message || JSON.stringify(data), false);
+      }
+    } catch (_) {
+      showResponse(errMsg(lang), true);
+    }
+  }
+
+  // ③ QR確認
+  async function submitQRCheck() {
+    const token = document.getElementById('qrcheck-token').value.trim();
+    if (!token) {
+      showResponse('QR IDを入力してください / Please enter QR ID', true);
+      return;
+    }
+    showResponse(waitMsg('ja'), false);
+    try {
+      const res = await fetch(BASE + '/qr/' + encodeURIComponent(token));
+      const data = await res.json();
+      if (!res.ok) {
+        showResponse(data.error || errMsg('ja'), true);
+      } else {
+        const info = [
+          'QR ID: ' + data.qr_id,
+          'Status: ' + data.status,
+          'Valid: ' + (data.is_valid !== undefined ? data.is_valid : '-'),
+          'Departure: ' + (data.departure_hub || '-'),
+          'Arrival: ' + (data.arrival_hub || '-'),
+        ].join('\n');
+        showResponse(info, false);
+      }
+    } catch (_) {
+      showResponse(errMsg('ja'), true);
+    }
+  }
+</script>
+</body>
+</html>

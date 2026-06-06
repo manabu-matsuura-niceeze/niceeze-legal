@@ -235,7 +235,7 @@ class TestAISupport(unittest.TestCase):
         self.assertIn('staff', resp.response_text)
 
     def test_unsupported_language_fallback(self):
-        req = self._make_req(lang='fr', cat='general')
+        req = self._make_req(lang='xx', cat='general')
         resp = self.center.respond(req)
         self.assertEqual(resp.language, 'ja')  # DEFAULT_LANGUAGE
 
@@ -359,6 +359,157 @@ class TestTravelPDF(unittest.TestCase):
         doc = TravelPDFDocument(qr=qr)
         result = self.gen.generate_html(doc)
         self.assertIn('QRコードを到着拠点スタッフ', result)
+
+
+# ---------------------------------------------------------------------------
+# TestAISupportExtended — 10言語・Claude API連携・unlock_request
+# ---------------------------------------------------------------------------
+class TestAISupportExtended(unittest.TestCase):
+
+    def setUp(self):
+        os.environ.pop('ANTHROPIC_API_KEY', None)
+        self.center = AISupportCenter()
+        self.mgr = TravelQRManager()
+
+    def _make_req(self, lang='ja', cat='general', msg='テスト', qr_id=''):
+        return self.center.create_request(lang, cat, msg, qr_id)
+
+    # ── 10言語全てで SupportResponse を返す ──────────────────────────────
+    def test_all_10_languages_return_support_response(self):
+        from src.sbds.ai_support import SUPPORTED_LANGUAGES
+        for lang in SUPPORTED_LANGUAGES:
+            with self.subTest(lang=lang):
+                req = self._make_req(lang=lang)
+                resp = self.center.respond(req)
+                self.assertIsInstance(resp, SupportResponse)
+                self.assertEqual(resp.language, lang)
+
+    # ── zh-CN テンプレート応答確認 ────────────────────────────────────────
+    def test_zh_cn_template_response(self):
+        req = self._make_req(lang='zh-CN', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'zh-CN')
+        self.assertIn('感谢', resp.response_text)
+
+    # ── zh-TW テンプレート応答確認 ────────────────────────────────────────
+    def test_zh_tw_template_response(self):
+        req = self._make_req(lang='zh-TW', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'zh-TW')
+        self.assertIn('感謝', resp.response_text)
+
+    # ── th（タイ語）テンプレート応答確認 ──────────────────────────────────
+    def test_th_template_response(self):
+        req = self._make_req(lang='th', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'th')
+        self.assertIn('ขอบคุณ', resp.response_text)
+
+    # ── fr テンプレート応答確認 ───────────────────────────────────────────
+    def test_fr_template_response(self):
+        req = self._make_req(lang='fr', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'fr')
+        self.assertIn('Merci', resp.response_text)
+
+    # ── de テンプレート応答確認 ───────────────────────────────────────────
+    def test_de_template_response(self):
+        req = self._make_req(lang='de', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'de')
+        self.assertIn('Vielen Dank', resp.response_text)
+
+    # ── es テンプレート応答確認 ───────────────────────────────────────────
+    def test_es_template_response(self):
+        req = self._make_req(lang='es', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'es')
+        self.assertIn('Gracias', resp.response_text)
+
+    # ── pt テンプレート応答確認 ───────────────────────────────────────────
+    def test_pt_template_response(self):
+        req = self._make_req(lang='pt', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'pt')
+        self.assertIn('Obrigado', resp.response_text)
+
+    # ── 未サポート言語で ja フォールバック ────────────────────────────────
+    def test_unsupported_language_fallback_to_ja(self):
+        req = self._make_req(lang='xx')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'ja')
+
+    # ── unlock_request: 有効QRトークンで qr_valid=True ───────────────────
+    def test_unlock_request_valid_qr_token(self):
+        # travel_api の _qr_manager にトークンを登録
+        import src.sbds.travel_api as ta
+        qr = ta._qr_manager.issue(
+            traveler_ref='ref-ul-001',
+            departure_hub='TYO',
+            arrival_hub='OSA',
+            baggage_count=1,
+        )
+        result = self.center.unlock_request(qr.token, requester_language='ja')
+        self.assertTrue(result['qr_valid'])
+
+    # ── unlock_request: 無効トークンで qr_valid=False ────────────────────
+    def test_unlock_request_invalid_token_qr_valid_false(self):
+        result = self.center.unlock_request('invalid-token-xyz', requester_language='en')
+        self.assertFalse(result['qr_valid'])
+
+    # ── unlock_request: auto_approve=False で unlock_approved=False ──────
+    def test_unlock_request_auto_approve_false(self):
+        import src.sbds.travel_api as ta
+        qr = ta._qr_manager.issue('ref-ul-002', 'TYO', 'OSA', 1)
+        result = self.center.unlock_request(
+            qr.token, requester_language='ja', auto_approve=False
+        )
+        self.assertFalse(result['unlock_approved'])
+
+    # ── unlock_request: admin_approval_required=True ─────────────────────
+    def test_unlock_request_admin_approval_required(self):
+        import src.sbds.travel_api as ta
+        qr = ta._qr_manager.issue('ref-ul-003', 'TYO', 'OSA', 1)
+        result = self.center.unlock_request(qr.token, requester_language='ja')
+        self.assertTrue(result['admin_approval_required'])
+
+    # ── ANTHROPIC_API_KEY未設定で mock_mode=True ─────────────────────────
+    def test_mock_mode_true_when_no_api_key(self):
+        os.environ.pop('ANTHROPIC_API_KEY', None)
+        center = AISupportCenter()
+        self.assertTrue(center._mock_mode)
+
+    # ── unlock_request: 結果に必須キーが揃う ─────────────────────────────
+    def test_unlock_request_result_keys(self):
+        result = self.center.unlock_request('any-token', requester_language='en')
+        for key in ('request_id', 'qr_valid', 'unlock_approved', 'message',
+                    'admin_approval_required', 'created_at'):
+            self.assertIn(key, result)
+
+    # ── unlock_request: ja メッセージに '管理者' が含まれる ──────────────
+    def test_unlock_request_ja_message_contains_admin(self):
+        result = self.center.unlock_request('any-token', requester_language='ja')
+        self.assertIn('管理者', result['message'])
+
+    # ── Accept-Language ヘッダー解析: zh-TW ──────────────────────────────
+    def test_create_request_accept_language_zh_tw(self):
+        req = self.center.create_request(
+            language='xx',
+            category='general',
+            message='hello',
+            accept_language='zh-TW,zh;q=0.9,en;q=0.8',
+        )
+        self.assertEqual(req.language, 'zh-TW')
+
+    # ── lang 引数が accept_language より優先 ─────────────────────────────
+    def test_create_request_lang_overrides_accept_language(self):
+        req = self.center.create_request(
+            language='ko',
+            category='general',
+            message='hello',
+            accept_language='fr,en;q=0.9',
+        )
+        self.assertEqual(req.language, 'ko')
 
 
 if __name__ == '__main__':
