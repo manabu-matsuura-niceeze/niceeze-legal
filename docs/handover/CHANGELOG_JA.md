@@ -722,6 +722,58 @@ bash scripts/stop_all_staging.sh
 
 ---
 
+## [G2-007] 2026-06-06 — TASK-1〜4 一括強化（RESEARCH/SBDS/SURPLUS/TRAVEL）
+
+### TASK-1: RESEARCH API v1 強化
+- `src/research/analytics.py`（新規）: 分析エンジン
+  - `PriceTrendResult`: 価格推移・前週比・前月比
+  - `RankingEntry`: 建物タイプ別（luxury/family/student/single）売れ筋
+  - `GrowthAlert`: 週次成長率閾値超え自動検出
+  - `NewProduct`: 新商品初動データ
+  - `export_csv` / `export_summary`: CSV/テキスト形式エクスポート
+- `src/research/api.py` 更新: `/api/v1/research/` 5エンドポイント追加
+  - GET price-trend / ranking / growth-alert / new-products
+  - POST export（Bearer token認証 / RESEARCH_EXPORT_TOKEN）
+- `tests/test_research.py`: +21テスト（計59件）
+
+### TASK-2: SBDS ヤマト・佐川Webhook連携
+- `src/sbds/carrier_webhook.py`（新規）: JP7017282特許準拠複数事業者管理
+  - HMAC-SHA256署名検証（`hmac.compare_digest`タイミング攻撃対策）
+  - tracking_number SHA-256ハッシュ化（PII除去）
+  - ロッカー自動割当（`{bldg}-F{n:02d}-L{size}001` フォーマット）
+- `src/sbds/carrier_api.py`（新規）: port 8084
+  - POST /api/v1/webhook/yamato|sagawa（署名検証・401エラー）
+  - GET /api/v1/admin/deliveries（carrier/日付範囲フィルタ）
+- `tests/test_carrier_webhook.py`: 17テスト（Webhook12+E2E5）
+
+### TASK-3: SURPLUS SHIFT 商談サポート
+- `src/surplus_shift/negotiation_api.py`（新規）: 商談進捗管理
+  - 6ステータス: initial_contact/proposal/negotiating/agreed/closed_won/closed_lost
+  - `export_pdf_html()`: 商談レポートHTML（@media print / stdlib only）
+  - `to_smartlife()`: SmartLife商品登録（pending_review / 人間レビュー必須）
+  - `SmartLifeProduct.human_review_required=True` 変更禁止（`__setattr__`ガード）
+- `src/surplus_shift/surplus_api.py`（新規）: port 8085（do_GET/POST/PUT）
+- `tests/test_negotiation_api.py`: 24テスト（Manager16+E2E8）
+- **Gate D制約維持**: 自動登録禁止 / human_review_required固定
+
+### TASK-4: 手ぶら旅行 AIサポート完成
+- `src/sbds/ai_support.py` 更新: 4言語→**10言語**（ja/en/zh-CN/zh-TW/ko/th/fr/de/es/pt）
+  - Claude API実連携（`ANTHROPIC_API_KEY` / `claude-sonnet-4-20250514`）
+  - `_call_claude_api()`: urllib stdlib only / 失敗時テンプレートフォールバック
+  - `unlock_request()`: QR照合→管理者承認フロー（`auto_approve=False` デフォルト）
+  - `create_request()`: Accept-Language解析 / zh-CN/zh-TW正確マッチング
+- `src/sbds/travel_api.py` 更新: POST /support/unlock-request 追加
+- `src/sbds/static/panel.html`（新規）: タッチパネル対応UI
+  - 200px+ボタン / 28px+フォント / 高コントラスト
+  - 3機能（サポート・解錠・QR確認）/ fetch API / 10言語エラー表示
+- `tests/test_travel.py`: +19テスト（計69件）
+
+### CI/テスト状況（全Pass）
+- **全テスト合計: 411件** ✅（+80件）
+- bandit: Severity High:0 / Medium:0 ✅
+
+---
+
 ## 予定（Gate別）
 
 | Gate | 予定時期 | 主要変更 |
