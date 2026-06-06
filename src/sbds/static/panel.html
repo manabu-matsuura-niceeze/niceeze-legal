@@ -40,14 +40,102 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* ── メインコンテンツ ── */
-    main {
-      flex: 1;
-      padding: 24px 20px;
+    /* ── 画面切替 ── */
+    .screen { display: none; flex-direction: column; flex: 1; }
+    .screen.active { display: flex; }
+
+    /* ── 言語選択画面 ── */
+    #lang-screen {
+      padding: 24px 16px;
+      gap: 16px;
+    }
+    .lang-title {
+      text-align: center;
+      font-size: 26px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .lang-subtitle {
+      text-align: center;
+      font-size: 18px;
+      color: #aab4cc;
+      margin-bottom: 16px;
+    }
+    .lang-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      padding: 0 4px;
+    }
+    @media (min-width: 600px) {
+      .lang-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .lang-btn {
+      background: #222840;
+      border: 2px solid #3a4460;
+      border-radius: 16px;
+      padding: 20px 12px;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+      min-height: 120px;
+      justify-content: center;
+    }
+    .lang-btn:active { background: #2c3555; border-color: #6EA7DB; transform: scale(0.97); }
+    .lang-btn.selected { background: #1e3a5f; border-color: #6EA7DB; }
+    .lang-flag {
+      font-size: 44px;
+      line-height: 1;
+    }
+    .lang-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: center;
+    }
+    .lang-native {
+      font-size: 13px;
+      color: #aab4cc;
+      text-align: center;
+    }
+
+    /* ── メインメニュー画面 ── */
+    #main-screen {
+      padding: 24px 20px;
       gap: 24px;
     }
+
+    .current-lang-bar {
+      background: #222840;
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #3a4460;
+    }
+    .current-lang-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+    }
+    .change-lang-btn {
+      background: #3a4460;
+      border: none;
+      border-radius: 8px;
+      color: #aab4cc;
+      font-size: 15px;
+      padding: 8px 16px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .change-lang-btn:active { background: #4a5478; }
 
     .section-title {
       font-size: 20px;
@@ -156,6 +244,9 @@
     .accordion-toggle { cursor: pointer; user-select: none; }
     .toggle-icon { font-size: 20px; float: right; transition: transform 0.2s; }
     .accordion-toggle.active .toggle-icon { transform: rotate(180deg); }
+
+    /* RTL (Arabic) */
+    .rtl { direction: rtl; text-align: right; }
   </style>
 </head>
 <body>
@@ -166,31 +257,107 @@
   <div id="clock">--:--:--</div>
 </header>
 
-<main>
+<!-- ① 言語選択画面 -->
+<div id="lang-screen" class="screen active">
+  <div class="lang-title">🌐 言語を選択 / Select Language</div>
+  <div class="lang-subtitle">ご希望の言語をタッチしてください</div>
+  <div class="lang-grid">
+    <button class="lang-btn" onclick="selectLang('ja')">
+      <span class="lang-flag">🇯🇵</span>
+      <span class="lang-name">日本語</span>
+      <span class="lang-native">Japanese</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('en')">
+      <span class="lang-flag">🇬🇧</span>
+      <span class="lang-name">English</span>
+      <span class="lang-native">英語</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('zh-CN')">
+      <span class="lang-flag">🇨🇳</span>
+      <span class="lang-name">中文（简体）</span>
+      <span class="lang-native">Simplified Chinese</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('zh-TW')">
+      <span class="lang-flag">🇹🇼</span>
+      <span class="lang-name">中文（繁體）</span>
+      <span class="lang-native">Traditional Chinese</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('ko')">
+      <span class="lang-flag">🇰🇷</span>
+      <span class="lang-name">한국어</span>
+      <span class="lang-native">Korean</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('th')">
+      <span class="lang-flag">🇹🇭</span>
+      <span class="lang-name">ภาษาไทย</span>
+      <span class="lang-native">Thai</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('fr')">
+      <span class="lang-flag">🇫🇷</span>
+      <span class="lang-name">Français</span>
+      <span class="lang-native">French</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('it')">
+      <span class="lang-flag">🇮🇹</span>
+      <span class="lang-name">Italiano</span>
+      <span class="lang-native">Italian</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('de')">
+      <span class="lang-flag">🇩🇪</span>
+      <span class="lang-name">Deutsch</span>
+      <span class="lang-native">German</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('es')">
+      <span class="lang-flag">🇪🇸</span>
+      <span class="lang-name">Español</span>
+      <span class="lang-native">Spanish</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('pt')">
+      <span class="lang-flag">🇧🇷</span>
+      <span class="lang-name">Português</span>
+      <span class="lang-native">Portuguese</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('id')">
+      <span class="lang-flag">🇮🇩</span>
+      <span class="lang-name">Bahasa Indonesia</span>
+      <span class="lang-native">Indonesian</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('ar')">
+      <span class="lang-flag">🇸🇦</span>
+      <span class="lang-name">العربية</span>
+      <span class="lang-native">Arabic</span>
+    </button>
+    <button class="lang-btn" onclick="selectLang('hi')">
+      <span class="lang-flag">🇮🇳</span>
+      <span class="lang-name">हिन्दी</span>
+      <span class="lang-native">Hindi</span>
+    </button>
+  </div>
+</div>
+
+<!-- ② メインメニュー画面 -->
+<div id="main-screen" class="screen">
+
+  <!-- 現在の言語バー -->
+  <div class="current-lang-bar">
+    <div class="current-lang-info">
+      <span id="current-flag" style="font-size:30px;">🇯🇵</span>
+      <span id="current-lang-name" style="font-size:18px;">日本語</span>
+    </div>
+    <button class="change-lang-btn" onclick="showLangScreen()">
+      🌐 変更 / Change
+    </button>
+  </div>
 
   <!-- ① サポートを呼ぶ -->
   <div>
     <div class="card">
       <div class="section-title accordion-toggle" onclick="toggleAccordion('support-form', this)">
-        サポートを呼ぶ / Ask Support
+        <span id="lbl-support-title">サポートを呼ぶ / Ask Support</span>
         <span class="toggle-icon">▼</span>
       </div>
       <div class="accordion-body open" id="support-form">
-        <label>言語 / Language</label>
-        <select id="support-lang">
-          <option value="ja">日本語</option>
-          <option value="en">English</option>
-          <option value="zh-CN">中文（简体）</option>
-          <option value="zh-TW">中文（繁體）</option>
-          <option value="ko">한국어</option>
-          <option value="th">ภาษาไทย</option>
-          <option value="fr">Français</option>
-          <option value="de">Deutsch</option>
-          <option value="es">Español</option>
-          <option value="pt">Português</option>
-        </select>
-
-        <label>カテゴリ / Category</label>
+        <label id="lbl-category">カテゴリ / Category</label>
         <select id="support-cat">
           <option value="general">一般問い合わせ / General</option>
           <option value="baggage_tracking">荷物追跡 / Tracking</option>
@@ -199,13 +366,13 @@
           <option value="hub_location">拠点案内 / Hub Info</option>
         </select>
 
-        <label>メッセージ（省略可）/ Message (optional)</label>
+        <label id="lbl-message">メッセージ（省略可）/ Message (optional)</label>
         <textarea id="support-msg" placeholder="ご質問をどうぞ…"></textarea>
 
-        <label>QR ID（省略可）/ QR ID (optional)</label>
+        <label id="lbl-qr-support">QR ID（省略可）/ QR ID (optional)</label>
         <input type="text" id="support-qr" placeholder="QR ID">
 
-        <button class="submit-btn submit-support" onclick="submitSupport()">
+        <button class="submit-btn submit-support" onclick="submitSupport()" id="btn-call-support">
           サポートを呼ぶ / Call Support
         </button>
       </div>
@@ -216,28 +383,14 @@
   <div>
     <div class="card">
       <div class="section-title accordion-toggle" onclick="toggleAccordion('unlock-form', this)">
-        解錠リクエスト / Unlock Request
+        <span id="lbl-unlock-title">解錠リクエスト / Unlock Request</span>
         <span class="toggle-icon">▼</span>
       </div>
       <div class="accordion-body" id="unlock-form">
-        <label>QRトークン / QR Token</label>
+        <label id="lbl-qr-token">QRトークン / QR Token</label>
         <input type="text" id="unlock-token" placeholder="QRトークンを入力">
 
-        <label>言語 / Language</label>
-        <select id="unlock-lang">
-          <option value="ja">日本語</option>
-          <option value="en">English</option>
-          <option value="zh-CN">中文（简体）</option>
-          <option value="zh-TW">中文（繁體）</option>
-          <option value="ko">한국어</option>
-          <option value="th">ภาษาไทย</option>
-          <option value="fr">Français</option>
-          <option value="de">Deutsch</option>
-          <option value="es">Español</option>
-          <option value="pt">Português</option>
-        </select>
-
-        <button class="submit-btn submit-unlock" onclick="submitUnlock()">
+        <button class="submit-btn submit-unlock" onclick="submitUnlock()" id="btn-send-unlock">
           解錠リクエスト送信 / Send Unlock Request
         </button>
       </div>
@@ -248,14 +401,14 @@
   <div>
     <div class="card">
       <div class="section-title accordion-toggle" onclick="toggleAccordion('qrcheck-form', this)">
-        QR確認 / QR Check
+        <span id="lbl-qrcheck-title">QR確認 / QR Check</span>
         <span class="toggle-icon">▼</span>
       </div>
       <div class="accordion-body" id="qrcheck-form">
-        <label>QR IDまたはトークン / QR ID or Token</label>
+        <label id="lbl-qr-id">QR IDまたはトークン / QR ID or Token</label>
         <input type="text" id="qrcheck-token" placeholder="QR IDを入力">
 
-        <button class="submit-btn submit-qr" onclick="submitQRCheck()">
+        <button class="submit-btn submit-qr" onclick="submitQRCheck()" id="btn-check-qr">
           QRを確認 / Check QR
         </button>
       </div>
@@ -265,33 +418,111 @@
   <!-- 応答表示エリア -->
   <div id="response-area" role="status" aria-live="polite"></div>
 
-</main>
+</div>
 
 <!-- フッター -->
 <footer>
-  NiceEze 手ぶら旅行システム v2.0 &nbsp;|&nbsp; サポート: support@niceeze.com &nbsp;|&nbsp; 管理者: admin@niceeze.com
+  NiceEze 手ぶら旅行システム v2.1 &nbsp;|&nbsp; 14言語対応 / 14 Languages &nbsp;|&nbsp; support@niceeze.com
 </footer>
 
 <script>
   'use strict';
 
-  // 時刻更新
+  /* ── 言語データ ── */
+  const LANG_META = {
+    'ja':    { flag: '🇯🇵', name: '日本語', dir: 'ltr' },
+    'en':    { flag: '🇬🇧', name: 'English', dir: 'ltr' },
+    'zh-CN': { flag: '🇨🇳', name: '中文（简体）', dir: 'ltr' },
+    'zh-TW': { flag: '🇹🇼', name: '中文（繁體）', dir: 'ltr' },
+    'ko':    { flag: '🇰🇷', name: '한국어', dir: 'ltr' },
+    'th':    { flag: '🇹🇭', name: 'ภาษาไทย', dir: 'ltr' },
+    'fr':    { flag: '🇫🇷', name: 'Français', dir: 'ltr' },
+    'it':    { flag: '🇮🇹', name: 'Italiano', dir: 'ltr' },
+    'de':    { flag: '🇩🇪', name: 'Deutsch', dir: 'ltr' },
+    'es':    { flag: '🇪🇸', name: 'Español', dir: 'ltr' },
+    'pt':    { flag: '🇧🇷', name: 'Português', dir: 'ltr' },
+    'id':    { flag: '🇮🇩', name: 'Bahasa Indonesia', dir: 'ltr' },
+    'ar':    { flag: '🇸🇦', name: 'العربية', dir: 'rtl' },
+    'hi':    { flag: '🇮🇳', name: 'हिन्दी', dir: 'ltr' },
+  };
+
+  /* ── UI文言（多言語） ── */
+  const UI_STRINGS = {
+    supportTitle:  { ja:'サポートを呼ぶ', en:'Call Support', 'zh-CN':'呼叫服务', 'zh-TW':'呼叫服務', ko:'지원 요청', th:'เรียกเจ้าหน้าที่', fr:'Appeler le support', it:'Chiama supporto', de:'Support rufen', es:'Llamar soporte', pt:'Chamar suporte', id:'Panggil staf', ar:'طلب الدعم', hi:'सहायता बुलाएं' },
+    unlockTitle:   { ja:'解錠リクエスト', en:'Unlock Request', 'zh-CN':'解锁申请', 'zh-TW':'解鎖申請', ko:'잠금 해제', th:'ขอเปิดล็อก', fr:'Demande déverrouillage', it:'Sblocco', de:'Entsperrung', es:'Solicitud desbloqueo', pt:'Desbloqueio', id:'Permintaan buka kunci', ar:'طلب فتح القفل', hi:'अनलॉक अनुरोध' },
+    qrcheckTitle:  { ja:'QR確認', en:'QR Check', 'zh-CN':'QR查询', 'zh-TW':'QR查詢', ko:'QR 확인', th:'ตรวจสอบ QR', fr:'Vérification QR', it:'Verifica QR', de:'QR-Prüfung', es:'Verificar QR', pt:'Verificar QR', id:'Periksa QR', ar:'فحص QR', hi:'QR जाँच' },
+    btnSupport:    { ja:'サポートを呼ぶ', en:'Call Support', 'zh-CN':'呼叫服务', 'zh-TW':'呼叫服務', ko:'지원 요청', th:'เรียกเจ้าหน้าที่', fr:'Appeler', it:'Chiama', de:'Rufen', es:'Llamar', pt:'Chamar', id:'Panggil', ar:'اتصل', hi:'बुलाएं' },
+    btnUnlock:     { ja:'解錠リクエスト送信', en:'Send Unlock Request', 'zh-CN':'发送解锁申请', 'zh-TW':'發送解鎖申請', ko:'잠금 해제 요청', th:'ส่งคำขอเปิดล็อก', fr:'Envoyer', it:'Invia', de:'Senden', es:'Enviar', pt:'Enviar', id:'Kirim', ar:'إرسال', hi:'भेजें' },
+    btnQRCheck:    { ja:'QRを確認', en:'Check QR', 'zh-CN':'查询QR', 'zh-TW':'查詢QR', ko:'QR 확인', th:'ตรวจสอบ', fr:'Vérifier', it:'Verifica', de:'Prüfen', es:'Verificar', pt:'Verificar', id:'Periksa', ar:'فحص', hi:'जाँचें' },
+  };
+
+  const WAIT_MSGS = {
+    ja:'しばらくお待ちください…', en:'Please wait…', 'zh-CN':'请稍候…', 'zh-TW':'請稍候…',
+    ko:'잠시만 기다려 주세요…', th:'กรุณารอสักครู่…', fr:'Veuillez patienter…', it:'Attendere…',
+    de:'Bitte warten…', es:'Por favor espere…', pt:'Aguarde…', id:'Mohon tunggu…',
+    ar:'يرجى الانتظار…', hi:'कृपया प्रतीक्षा करें…',
+  };
+  const ERROR_MSGS = {
+    ja:'エラーが発生しました。', en:'An error occurred.', 'zh-CN':'发生错误。', 'zh-TW':'發生錯誤。',
+    ko:'오류가 발생했습니다.', th:'เกิดข้อผิดพลาด', fr:'Une erreur est survenue.', it:'Si è verificato un errore.',
+    de:'Ein Fehler ist aufgetreten.', es:'Se produjo un error.', pt:'Ocorreu um erro.',
+    id:'Terjadi kesalahan.', ar:'حدث خطأ.', hi:'एक त्रुटि हुई।',
+  };
+
+  let currentLang = 'ja';
+
+  /* ── 言語選択 ── */
+  function selectLang(lang) {
+    currentLang = lang;
+    const meta = LANG_META[lang] || LANG_META['ja'];
+
+    // 現在の言語バー更新
+    document.getElementById('current-flag').textContent = meta.flag;
+    document.getElementById('current-lang-name').textContent = meta.name;
+
+    // RTL対応
+    document.documentElement.dir = meta.dir;
+
+    // UI文言更新
+    updateUIStrings(lang);
+
+    // 画面切替
+    document.getElementById('lang-screen').classList.remove('active');
+    document.getElementById('main-screen').classList.add('active');
+  }
+
+  function showLangScreen() {
+    document.getElementById('main-screen').classList.remove('active');
+    document.getElementById('lang-screen').classList.add('active');
+    document.documentElement.dir = 'ltr';
+  }
+
+  function updateUIStrings(lang) {
+    const s = UI_STRINGS;
+    function get(obj) { return obj[lang] || obj['en'] || obj['ja']; }
+    document.getElementById('lbl-support-title').textContent = get(s.supportTitle);
+    document.getElementById('lbl-unlock-title').textContent = get(s.unlockTitle);
+    document.getElementById('lbl-qrcheck-title').textContent = get(s.qrcheckTitle);
+    document.getElementById('btn-call-support').textContent = get(s.btnSupport);
+    document.getElementById('btn-send-unlock').textContent = get(s.btnUnlock);
+    document.getElementById('btn-check-qr').textContent = get(s.btnQRCheck);
+  }
+
+  /* ── 時刻更新 ── */
   function updateClock() {
-    const now = new Date();
     document.getElementById('clock').textContent =
-      now.toLocaleTimeString('ja-JP', { hour12: false });
+      new Date().toLocaleTimeString('ja-JP', { hour12: false });
   }
   updateClock();
   setInterval(updateClock, 1000);
 
-  // アコーディオン
+  /* ── アコーディオン ── */
   function toggleAccordion(id, toggle) {
-    const body = document.getElementById(id);
-    body.classList.toggle('open');
+    document.getElementById(id).classList.toggle('open');
     toggle.classList.toggle('active');
   }
 
-  // 応答表示
+  /* ── 応答表示 ── */
   function showResponse(text, isError) {
     const el = document.getElementById('response-area');
     el.textContent = text;
@@ -299,43 +530,14 @@
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // エラーメッセージ（多言語）
-  const WAIT_MSGS = {
-    ja: 'しばらくお待ちください…',
-    en: 'Please wait a moment…',
-    'zh-CN': '请稍候…',
-    'zh-TW': '請稍候…',
-    ko: '잠시만 기다려 주세요…',
-    th: 'กรุณารอสักครู่…',
-    fr: 'Veuillez patienter…',
-    de: 'Bitte warten…',
-    es: 'Por favor espere…',
-    pt: 'Aguarde um momento…',
-  };
-  const ERROR_MSGS = {
-    ja: 'エラーが発生しました。しばらくお待ちください。',
-    en: 'An error occurred. Please wait a moment.',
-    'zh-CN': '发生错误。请稍候。',
-    'zh-TW': '發生錯誤。請稍候。',
-    ko: '오류가 발생했습니다. 잠시만 기다려 주세요.',
-    th: 'เกิดข้อผิดพลาด โปรดรอสักครู่',
-    fr: 'Une erreur est survenue. Veuillez patienter.',
-    de: 'Ein Fehler ist aufgetreten. Bitte warten.',
-    es: 'Se produjo un error. Por favor espere.',
-    pt: 'Ocorreu um erro. Aguarde um momento.',
-  };
-
-  function getLang(selectId) {
-    return document.getElementById(selectId).value || 'ja';
-  }
   function errMsg(lang) { return ERROR_MSGS[lang] || ERROR_MSGS['ja']; }
   function waitMsg(lang) { return WAIT_MSGS[lang] || WAIT_MSGS['ja']; }
 
   const BASE = '/api/v1/travel';
 
-  // ① サポートを呼ぶ
+  /* ── ① サポートを呼ぶ ── */
   async function submitSupport() {
-    const lang = getLang('support-lang');
+    const lang = currentLang;
     showResponse(waitMsg(lang), false);
     const payload = {
       language: lang,
@@ -350,56 +552,47 @@
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) {
-        showResponse(data.error || errMsg(lang), true);
-      } else {
-        showResponse(data.response_text || JSON.stringify(data), false);
-      }
+      showResponse(res.ok ? (data.response_text || JSON.stringify(data)) : (data.error || errMsg(lang)), !res.ok);
     } catch (_) {
       showResponse(errMsg(lang), true);
     }
   }
 
-  // ② 解錠リクエスト
+  /* ── ② 解錠リクエスト ── */
   async function submitUnlock() {
-    const lang = getLang('unlock-lang');
+    const lang = currentLang;
     const token = document.getElementById('unlock-token').value.trim();
     if (!token) {
       showResponse('QRトークンを入力してください / Please enter QR token', true);
       return;
     }
     showResponse(waitMsg(lang), false);
-    const payload = { token: token, lang: lang, auto_approve: false };
     try {
       const res = await fetch(BASE + '/support/unlock-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ token, lang, auto_approve: false }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        showResponse(data.error || errMsg(lang), true);
-      } else {
-        showResponse(data.message || JSON.stringify(data), false);
-      }
+      showResponse(res.ok ? (data.message || JSON.stringify(data)) : (data.error || errMsg(lang)), !res.ok);
     } catch (_) {
       showResponse(errMsg(lang), true);
     }
   }
 
-  // ③ QR確認
+  /* ── ③ QR確認 ── */
   async function submitQRCheck() {
     const token = document.getElementById('qrcheck-token').value.trim();
     if (!token) {
       showResponse('QR IDを入力してください / Please enter QR ID', true);
       return;
     }
-    showResponse(waitMsg('ja'), false);
+    showResponse(waitMsg(currentLang), false);
     try {
       const res = await fetch(BASE + '/qr/' + encodeURIComponent(token));
       const data = await res.json();
       if (!res.ok) {
-        showResponse(data.error || errMsg('ja'), true);
+        showResponse(data.error || errMsg(currentLang), true);
       } else {
         const info = [
           'QR ID: ' + data.qr_id,
@@ -411,7 +604,7 @@
         showResponse(info, false);
       }
     } catch (_) {
-      showResponse(errMsg('ja'), true);
+      showResponse(errMsg(currentLang), true);
     }
   }
 </script>

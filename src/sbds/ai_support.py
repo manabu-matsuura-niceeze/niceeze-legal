@@ -1,6 +1,6 @@
-"""手ぶら旅行 AIサポートセンター (Ver 2.0)
+"""手ぶら旅行 AIサポートセンター (Ver 2.1)
 SBDS部門
-Claude API 多言語対応（10言語）
+Claude API 多言語対応（14言語）
 FinOps: ANTHROPIC_API_KEY未設定時はテンプレートベース（¥0）
 """
 from __future__ import annotations
@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import List
 
-SUPPORTED_LANGUAGES = ['ja', 'en', 'zh-CN', 'zh-TW', 'ko', 'th', 'fr', 'de', 'es', 'pt']
+SUPPORTED_LANGUAGES = ['ja', 'en', 'zh-CN', 'zh-TW', 'ko', 'th', 'fr', 'de', 'es', 'pt', 'it', 'id', 'ar', 'hi']
 DEFAULT_LANGUAGE = 'ja'
 
 CLAUDE_MODEL = 'claude-sonnet-4-20250514'
@@ -39,6 +39,10 @@ RESPONSE_TEMPLATES: dict[str, dict[str, str]] = {
         'de': 'Gepäckverfolgung: Ihr Gepäck [QR: {qr_id}] ist aktuell [{status}].',
         'es': 'Seguimiento de equipaje: Su equipaje [QR: {qr_id}] está [{status}].',
         'pt': 'Rastreamento de bagagem: Sua bagagem [QR: {qr_id}] está [{status}].',
+        'it': 'Tracciamento bagagli: Il tuo bagaglio [QR: {qr_id}] è attualmente [{status}].',
+        'id': 'Pelacakan bagasi: Bagasi Anda [QR: {qr_id}] saat ini [{status}].',
+        'ar': 'تتبع الأمتعة: أمتعتك [QR: {qr_id}] حالتها الحالية [{status}].',
+        'hi': 'सामान ट्रैकिंग: आपका सामान [QR: {qr_id}] वर्तमान स्थिति [{status}] है।',
     },
     'lost_baggage': {
         'ja': 'お荷物が見つからない場合は、到着拠点スタッフへお申し出ください。QRコード [{qr_id}] をご提示ください。',
@@ -51,6 +55,10 @@ RESPONSE_TEMPLATES: dict[str, dict[str, str]] = {
         'de': 'Falls Ihr Gepäck fehlt, wenden Sie sich ans Personal. Zeigen Sie QR [{qr_id}].',
         'es': 'Si falta su equipaje, contacte al personal. Muestre el QR [{qr_id}].',
         'pt': 'Se sua bagagem estiver faltando, contate a equipe. Mostre o QR [{qr_id}].',
+        'it': 'Se il tuo bagaglio manca, contatta il personale. Mostra il QR [{qr_id}].',
+        'id': 'Jika bagasi Anda hilang, hubungi staf. Tunjukkan QR [{qr_id}].',
+        'ar': 'إذا فُقدت أمتعتك، يرجى الاتصال بالموظفين. أظهر رمز QR [{qr_id}].',
+        'hi': 'यदि आपका सामान गुम है, तो स्टाफ से संपर्क करें। QR [{qr_id}] दिखाएं।',
     },
     'general': {
         'ja': 'お問い合わせありがとうございます。担当スタッフが対応いたします。',
@@ -63,6 +71,10 @@ RESPONSE_TEMPLATES: dict[str, dict[str, str]] = {
         'de': 'Vielen Dank für Ihre Anfrage. Unser Personal wird Ihnen helfen.',
         'es': 'Gracias por su consulta. Nuestro personal le asistirá.',
         'pt': 'Obrigado pela sua consulta. Nossa equipe irá ajudá-lo.',
+        'it': 'Grazie per la tua richiesta. Il nostro personale ti assisterà.',
+        'id': 'Terima kasih atas pertanyaan Anda. Staf kami akan membantu Anda.',
+        'ar': 'شكرًا على استفسارك. سيساعدك موظفونا.',
+        'hi': 'आपकी पूछताछ के लिए धन्यवाद। हमारा स्टाफ आपकी सहायता करेगा।',
     },
     'unlock_request': {
         'ja': 'QRコードの確認が完了しました。管理者の承認をお待ちください。',
@@ -75,6 +87,10 @@ RESPONSE_TEMPLATES: dict[str, dict[str, str]] = {
         'de': 'QR-Überprüfung abgeschlossen. Bitte auf Admin-Genehmigung warten.',
         'es': 'Verificación QR completada. Espere la aprobación del administrador.',
         'pt': 'Verificação QR concluída. Aguarde aprovação do administrador.',
+        'it': "Verifica QR completata. Attendere l'approvazione dell'amministratore.",
+        'id': 'Verifikasi QR selesai. Silakan tunggu persetujuan administrator.',
+        'ar': 'اكتمل التحقق من QR. يرجى انتظار موافقة المسؤول.',
+        'hi': 'QR सत्यापन पूर्ण। कृपया प्रशासक की अनुमोदन की प्रतीक्षा करें।',
     },
 }
 
@@ -89,6 +105,10 @@ _STATUS_UNKNOWN: dict[str, str] = {
     'de': 'unbekannt',
     'es': 'desconocido',
     'pt': 'desconhecido',
+    'it': 'sconosciuto',
+    'id': 'tidak diketahui',
+    'ar': 'غير معروف',
+    'hi': 'अज्ञात',
 }
 
 
@@ -121,7 +141,7 @@ class SupportResponse:
 
 
 class AISupportCenter:
-    """AIサポートセンター（10言語対応・Claude API連携）"""
+    """AIサポートセンター（14言語対応・Claude API連携）"""
 
     def __init__(self) -> None:
         self._api_key = os.environ.get('ANTHROPIC_API_KEY', '')

@@ -6,6 +6,30 @@
 
 ---
 
+## [G2-008] 2026-06-06 — TASK-4: 手ぶら旅行AIサポート 14言語拡張
+
+### 変更内容
+- `src/sbds/ai_support.py`
+  - `SUPPORTED_LANGUAGES` を10言語→14言語に拡張（追加: it/id/ar/hi）
+  - `RESPONSE_TEMPLATES` 全カテゴリ（baggage_tracking/lost_baggage/general/unlock_request）にit/id/ar/hi追加
+  - `_STATUS_UNKNOWN` にit/id/ar/hi追加
+  - クラスdocstring更新（10言語→14言語）
+- `src/sbds/static/panel.html`
+  - **言語選択画面（screen #1）を新設**: 14言語の国旗アイコン付きグリッド（2列/4列レスポンシブ）
+  - **メインメニュー画面（screen #2）**: 言語選択後に遷移、現在の言語バー表示（変更ボタン付き）
+  - RTL対応（アラビア語選択時に `dir="rtl"` 適用）
+  - UI文言（サポート/解錠/QR確認ボタン等）を14言語で動的切替
+  - WAIT_MSGS/ERROR_MSGS を14言語に拡張
+- `tests/test_travel.py`
+  - `test_it_template_response` / `test_id_template_response` / `test_ar_template_response` / `test_hi_template_response` 追加（4テスト）
+  - テスト計73 Pass（+ 14 subtests）
+
+### テスト結果
+- `python -m pytest tests/test_travel.py`: **73 passed, 14 subtests passed**
+- `python -m bandit src/ --severity-level medium -r`: Severity High/Medium **0件**
+
+---
+
 ## [G0-001] 2026-06-04 — 組織設計・レイアウトガバナンス初期構築
 
 ### 追加

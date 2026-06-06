@@ -374,7 +374,7 @@ class TestAISupportExtended(unittest.TestCase):
     def _make_req(self, lang='ja', cat='general', msg='テスト', qr_id=''):
         return self.center.create_request(lang, cat, msg, qr_id)
 
-    # ── 10言語全てで SupportResponse を返す ──────────────────────────────
+    # ── 14言語全てで SupportResponse を返す ──────────────────────────────
     def test_all_10_languages_return_support_response(self):
         from src.sbds.ai_support import SUPPORTED_LANGUAGES
         for lang in SUPPORTED_LANGUAGES:
@@ -432,6 +432,34 @@ class TestAISupportExtended(unittest.TestCase):
         resp = self.center.respond(req)
         self.assertEqual(resp.language, 'pt')
         self.assertIn('Obrigado', resp.response_text)
+
+    # ── it（イタリア語）テンプレート応答確認 ─────────────────────────────
+    def test_it_template_response(self):
+        req = self._make_req(lang='it', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'it')
+        self.assertIn('Grazie', resp.response_text)
+
+    # ── id（インドネシア語）テンプレート応答確認 ──────────────────────────
+    def test_id_template_response(self):
+        req = self._make_req(lang='id', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'id')
+        self.assertIn('Terima kasih', resp.response_text)
+
+    # ── ar（アラビア語）テンプレート応答確認 ─────────────────────────────
+    def test_ar_template_response(self):
+        req = self._make_req(lang='ar', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'ar')
+        self.assertIn('شكرًا', resp.response_text)
+
+    # ── hi（ヒンディー語）テンプレート応答確認 ───────────────────────────
+    def test_hi_template_response(self):
+        req = self._make_req(lang='hi', cat='general')
+        resp = self.center.respond(req)
+        self.assertEqual(resp.language, 'hi')
+        self.assertIn('धन्यवाद', resp.response_text)
 
     # ── 未サポート言語で ja フォールバック ────────────────────────────────
     def test_unsupported_language_fallback_to_ja(self):
