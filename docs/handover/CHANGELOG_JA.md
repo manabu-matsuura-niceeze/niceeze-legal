@@ -6,6 +6,47 @@
 
 ---
 
+## [G2-011] 2026-06-07 — TASK-8: SBDS G2設計開始（要件定義・アーキテクチャ・スケルトン）
+
+### 追加
+- `docs/sbds/G2_REQUIREMENTS.md` — G2要件定義書
+  - 差分機能7件（G2-F01〜F07）優先度・難易度・工数付き
+  - マイルストーン: 設計確定→実装→UAT→2026-08-31本番
+- `docs/sbds/G2_ARCHITECTURE.md` — G2アーキテクチャ設計
+  - G1変更禁止ルール・`/api/v2/`プレフィックス・G2テーブル`_g2`サフィックス
+  - 依存関係ルール: G2→G1参照OK、G1→G2禁止
+- `src/sbds_g2/` スケルトン（ar_guide/multi_building/mgmt_api/pwa/shared）
+- `tests/test_sbds_g2_skeleton.py` — import確認テスト（G1非破壊確認含む）8件Pass
+
+---
+
+## [G2-010] 2026-06-07 — TASK-6: 本番セキュリティ強化（個人情報保護法対応）
+
+### 追加
+- `src/security/pii_encryptor.py` — XOR-CTR + PBKDF2-HMAC-SHA256、mock_mode対応
+- `src/security/access_log_middleware.py` — 全API共通ログ（操作者ID/IP/endpoint/180日保持）
+- `src/security/anonymizer.py` — 正規表現マスク（電話/メール/QRトークン/クレジットカード/日本人名）
+- `scripts/data_retention.py` — 保存期間自動削除バッチ（dry_run/実削除モード）
+  - 居住者3年・配送履歴2年・AIサポートログ90日・アクセスログ180日
+- `.github/workflows/data_retention.yml` — cron 毎日JST 0:00（UTC 15:00）
+- `tests/test_security.py` — 46件Pass、bandit Severity High/Medium 0件
+
+---
+
+## [G2-009] 2026-06-07 — TASK-5: SmartLife EC基本機能（port 8086）
+
+### 追加
+- `src/smartlife/products.py` — 商品マスタ管理（ProductStore / BUILDING_TYPES / CATEGORIES）
+  - register_from_surplus(): agreed/closed_wonのみ受付、Gate D制約
+- `src/smartlife/orders.py` — グループ予約・ゼロ在庫発注
+  - ZeroStockTrigger.__setattr__: human_approval_required=True変更禁止
+  - trigger_supplier_order(): surplus APIへ自動発注POST（urllib stdlib）
+- `src/smartlife/api.py` — REST API port 8086（7エンドポイント）
+- `src/smartlife/static/smartlife.html` — 居住者向けUI（商品一覧/グループ予約/注文状況タブ）
+- `tests/test_smartlife.py` — 50件Pass、bandit Severity High/Medium 0件
+
+---
+
 ## [G2-008] 2026-06-06 — TASK-4: 手ぶら旅行AIサポート 14言語拡張
 
 ### 変更内容
