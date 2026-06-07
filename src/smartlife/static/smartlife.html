@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartLife EC — 居住者向けグループ購買</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-dark:   #1a1f2e;
+      --bg-mid:    #222840;
+      --accent-red: #EC6D74;
+      --accent-blue: #6EA7DB;
+      --text-light: #f0f2f8;
+      --text-muted: #9aa3bd;
+      --card-bg:   #2a3050;
+      --border:    #3a4060;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-light);
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--bg-mid);
+      border-bottom: 2px solid var(--accent-red);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent-red);
+      letter-spacing: 0.03em;
+    }
+    header .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: var(--bg-mid);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 14px 8px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      color: var(--accent-blue);
+      border-bottom-color: var(--accent-blue);
+    }
+    .tab-btn:hover:not(.active) {
+      color: var(--text-light);
+    }
+
+    /* ── Tab panels ── */
+    .tab-panel { display: none; padding: 20px; }
+    .tab-panel.active { display: block; }
+
+    /* ── Section titles ── */
+    h2 {
+      font-size: 1.15rem;
+      color: var(--accent-blue);
+      margin-bottom: 16px;
+    }
+
+    /* ── Product grid ── */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .product-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .product-card:hover, .product-card:focus-within {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    .product-card .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .product-card .name {
+      font-size: 1rem;
+      font-weight: 600;
+      flex: 1;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+    .badge-luxury  { background: #7c5cbf; color: #fff; }
+    .badge-family  { background: #2e7d32; color: #fff; }
+    .badge-student { background: #1565c0; color: #fff; }
+    .badge-single  { background: #e65100; color: #fff; }
+
+    .product-card .meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .product-card .price {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent-red);
+    }
+    .product-card .min-qty {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .btn-reserve {
+      display: block;
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px;
+      background: var(--accent-blue);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-reserve:hover { background: #5a90c8; }
+    .btn-reserve:active { background: #4a7dae; }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .filter-bar label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .filter-bar select {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-light);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    /* ── Order form ── */
+    .form-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 560px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      background: var(--bg-mid);
+      border: 1px solid var(--border);
+      color: var(--text-light);
+      padding: 10px 12px;
+      border-radius: 7px;
+      font-size: 0.95rem;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: 2px solid var(--accent-blue);
+    }
+    .btn-submit {
+      padding: 12px 28px;
+      background: var(--accent-red);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-submit:hover { background: #d85860; }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+    .alert-success { background: #1b4332; border: 1px solid #2e7d32; }
+    .alert-error   { background: #4a1010; border: 1px solid var(--accent-red); }
+
+    /* ── Orders list ── */
+    .order-list { display: flex; flex-direction: column; gap: 14px; }
+    .order-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .order-card .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .status-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .status-pending   { background: #5d4e00; color: #ffd740; }
+    .status-confirmed { background: #1a4a1a; color: #69f0ae; }
+    .status-ordered   { background: #0d3363; color: #82b1ff; }
+    .status-delivered { background: #1b3a1b; color: #b9f6ca; }
+    .status-cancelled { background: #3e1010; color: #ff8a80; }
+
+    .order-meta { font-size: 0.82rem; color: var(--text-muted); }
+    .order-items { margin-top: 10px; font-size: 0.88rem; }
+    .order-items li { padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .order-items li:last-child { border-bottom: none; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .product-grid { grid-template-columns: 1fr; }
+      .filter-bar { flex-direction: column; align-items: flex-start; }
+      header .logo { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">SmartLife EC</div>
+    <div class="subtitle">居住者向けグループ購買・ゼロ在庫発注</div>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab-btn active" role="tab" aria-selected="true"  data-tab="products">商品一覧</button>
+  <button class="tab-btn"        role="tab" aria-selected="false" data-tab="reserve">グループ予約</button>
+  <button class="tab-btn"        role="tab" aria-selected="false" data-tab="orders">注文状況</button>
+</nav>
+
+<!-- ── 商品一覧 ── -->
+<section id="tab-products" class="tab-panel active" role="tabpanel">
+  <h2>商品一覧</h2>
+  <div class="filter-bar">
+    <label for="filter-building">建物タイプ:</label>
+    <select id="filter-building">
+      <option value="">すべて</option>
+      <option value="luxury">Luxury</option>
+      <option value="family">Family</option>
+      <option value="student">Student</option>
+      <option value="single">Single</option>
+    </select>
+    <label for="filter-category">カテゴリ:</label>
+    <select id="filter-category">
+      <option value="">すべて</option>
+      <option value="daily_goods">日用品</option>
+      <option value="food">食品</option>
+      <option value="cleaning">清掃用品</option>
+      <option value="furniture">家具</option>
+      <option value="electronics">家電</option>
+      <option value="other">その他</option>
+    </select>
+  </div>
+  <div id="product-grid" class="product-grid"></div>
+</section>
+
+<!-- ── グループ予約 ── -->
+<section id="tab-reserve" class="tab-panel" role="tabpanel">
+  <h2>グループ予約</h2>
+  <div id="reserve-alert"></div>
+  <div class="form-card">
+    <form id="reserve-form">
+      <div class="form-group">
+        <label for="building-code">建物コード</label>
+        <input id="building-code" type="text" placeholder="例: BLDG-001" required />
+      </div>
+      <div class="form-group">
+        <label for="product-select">商品</label>
+        <select id="product-select"></select>
+      </div>
+      <div class="form-group">
+        <label for="qty-input">数量</label>
+        <input id="qty-input" type="number" min="1" value="1" required />
+      </div>
+      <div class="form-group">
+        <label for="delivery-date">配送希望日</label>
+        <input id="delivery-date" type="date" required />
+      </div>
+      <div class="form-group">
+        <label for="deadline">申込締切日</label>
+        <input id="deadline" type="date" required />
+      </div>
+      <button type="submit" class="btn-submit">予約を申込む</button>
+    </form>
+  </div>
+</section>
+
+<!-- ── 注文状況 ── -->
+<section id="tab-orders" class="tab-panel" role="tabpanel">
+  <h2>注文状況</h2>
+  <div class="filter-bar">
+    <label for="filter-building-order">建物コード:</label>
+    <input id="filter-building-order" type="text" placeholder="BLDG-001" style="width:140px;background:var(--card-bg);border:1px solid var(--border);color:var(--text-light);padding:6px 10px;border-radius:6px;font-size:0.9rem;" />
+    <button onclick="loadOrders()" class="btn-submit" style="padding:8px 18px;font-size:0.9rem;">絞込み</button>
+  </div>
+  <div id="order-list" class="order-list"></div>
+</section>
+
+<script>
+// ── Mock data (fallback when API is unavailable) ──────────────────────────
+const MOCK_PRODUCTS = [
+  { id: 'abc12345', name: 'プレミアム米 5kg', building_type: 'luxury',  category: 'food',       price_jpy: 3800, min_order_qty: 2,  supplier_code: 'SUP001' },
+  { id: 'def67890', name: '洗濯洗剤 詰替 2kg', building_type: 'family',  category: 'cleaning',   price_jpy: 980,  min_order_qty: 5,  supplier_code: 'SUP002' },
+  { id: 'ghi11111', name: 'カップ麺 20個セット', building_type: 'student', category: 'food',       price_jpy: 2400, min_order_qty: 1,  supplier_code: 'SUP003' },
+  { id: 'jkl22222', name: 'ティッシュ 5箱セット', building_type: 'single',  category: 'daily_goods',price_jpy: 680,  min_order_qty: 3,  supplier_code: 'SUP004' },
+  { id: 'mno33333', name: 'スマート照明 LED',   building_type: 'luxury',  category: 'electronics',price_jpy: 5800, min_order_qty: 1,  supplier_code: 'SUP005' },
+  { id: 'pqr44444', name: 'ごみ袋 45L 30枚',   building_type: 'family',  category: 'cleaning',   price_jpy: 420,  min_order_qty: 10, supplier_code: 'SUP006' },
+];
+
+const MOCK_ORDERS = [
+  {
+    order_id: 'ord00001', building_code: 'BLDG-001',
+    items: [{ product_id: 'abc12345', qty: 4, unit_price_jpy: 3800 }],
+    status: 'confirmed', delivery_date: '2026-06-20', deadline: '2026-06-10', created_at: '2026-06-05T10:00:00Z'
+  },
+  {
+    order_id: 'ord00002', building_code: 'BLDG-002',
+    items: [{ product_id: 'def67890', qty: 10, unit_price_jpy: 980 }],
+    status: 'pending', delivery_date: '2026-06-25', deadline: '2026-06-15', created_at: '2026-06-06T09:30:00Z'
+  },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+const BUILDING_LABELS = { luxury: 'Luxury', family: 'Family', student: 'Student', single: 'Single' };
+const CATEGORY_LABELS = {
+  daily_goods: '日用品', food: '食品', cleaning: '清掃用品',
+  furniture: '家具', electronics: '家電', other: 'その他'
+};
+const STATUS_LABELS = {
+  pending: '申込中', confirmed: '確定', ordered: '発注済',
+  delivered: '配送完了', cancelled: 'キャンセル'
+};
+
+function buildingBadge(bt) {
+  return `<span class="badge badge-${bt}">${BUILDING_LABELS[bt] || bt}</span>`;
+}
+function statusBadge(st) {
+  return `<span class="status-badge status-${st}">${STATUS_LABELS[st] || st}</span>`;
+}
+
+// ── API calls with mock fallback ──────────────────────────────────────────
+async function fetchProducts() {
+  try {
+    const res = await fetch('/api/v1/smartlife/products');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch {
+    return MOCK_PRODUCTS;
+  }
+}
+
+async function fetchOrders(buildingCode = '') {
+  try {
+    const url = buildingCode
+      ? `/api/v1/smartlife/orders?building_code=${encodeURIComponent(buildingCode)}`
+      : '/api/v1/smartlife/orders';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch {
+    if (buildingCode) return MOCK_ORDERS.filter(o => o.building_code === buildingCode);
+    return MOCK_ORDERS;
+  }
+}
+
+// ── Render product grid ───────────────────────────────────────────────────
+let allProducts = [];
+
+function renderProducts(products) {
+  const grid = document.getElementById('product-grid');
+  if (!products.length) {
+    grid.innerHTML = '<div class="empty">商品が見つかりません</div>';
+    return;
+  }
+  grid.innerHTML = products.map(p => `
+    <div class="product-card" tabindex="0">
+      <div class="card-header">
+        <span class="name">${escHtml(p.name)}</span>
+        ${buildingBadge(p.building_type)}
+      </div>
+      <div class="meta">${CATEGORY_LABELS[p.category] || p.category} · コード: ${escHtml(p.supplier_code)}</div>
+      <div class="price">¥${p.price_jpy.toLocaleString()}</div>
+      <div class="min-qty">最低注文数: ${p.min_order_qty}個</div>
+      <button class="btn-reserve" onclick="goReserve('${escHtml(p.id)}')">グループ予約に追加</button>
+    </div>
+  `).join('');
+}
+
+function filterProducts() {
+  const bt = document.getElementById('filter-building').value;
+  const cat = document.getElementById('filter-category').value;
+  let filtered = allProducts;
+  if (bt)  filtered = filtered.filter(p => p.building_type === bt);
+  if (cat) filtered = filtered.filter(p => p.category === cat);
+  renderProducts(filtered);
+}
+
+document.getElementById('filter-building').addEventListener('change', filterProducts);
+document.getElementById('filter-category').addEventListener('change', filterProducts);
+
+async function loadProducts() {
+  allProducts = await fetchProducts();
+  filterProducts();
+  // Populate product select in reserve form
+  const sel = document.getElementById('product-select');
+  sel.innerHTML = allProducts.map(p =>
+    `<option value="${escHtml(p.id)}" data-price="${p.price_jpy}">${escHtml(p.name)} (¥${p.price_jpy.toLocaleString()})</option>`
+  ).join('');
+}
+
+// ── Reserve form ──────────────────────────────────────────────────────────
+function goReserve(productId) {
+  switchTab('reserve');
+  const sel = document.getElementById('product-select');
+  sel.value = productId;
+}
+
+document.getElementById('reserve-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const buildingCode = document.getElementById('building-code').value.trim();
+  const productId    = document.getElementById('product-select').value;
+  const qty          = parseInt(document.getElementById('qty-input').value, 10);
+  const deliveryDate = document.getElementById('delivery-date').value;
+  const deadline     = document.getElementById('deadline').value;
+
+  const selOpt = document.getElementById('product-select').selectedOptions[0];
+  const unitPrice = parseInt(selOpt?.dataset.price || '0', 10);
+
+  const payload = {
+    building_code: buildingCode,
+    items: [{ product_id: productId, qty, unit_price_jpy: unitPrice }],
+    delivery_date: deliveryDate,
+    deadline,
+  };
+
+  const alertEl = document.getElementById('reserve-alert');
+  try {
+    const res = await fetch('/api/v1/smartlife/orders/group', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      alertEl.innerHTML = '<div class="alert alert-success">グループ予約を申込みました。</div>';
+      e.target.reset();
+      loadOrders();
+    } else {
+      const err = await res.json();
+      alertEl.innerHTML = `<div class="alert alert-error">エラー: ${escHtml(err.error || 'Unknown error')}</div>`;
+    }
+  } catch {
+    // Mock fallback
+    alertEl.innerHTML = '<div class="alert alert-success">（モック）グループ予約を申込みました。</div>';
+    e.target.reset();
+  }
+});
+
+// ── Orders ────────────────────────────────────────────────────────────────
+async function loadOrders() {
+  const bc = document.getElementById('filter-building-order').value.trim();
+  const orders = await fetchOrders(bc);
+  const container = document.getElementById('order-list');
+  if (!orders.length) {
+    container.innerHTML = '<div class="empty">注文が見つかりません</div>';
+    return;
+  }
+  container.innerHTML = orders.map(o => `
+    <div class="order-card">
+      <div class="order-header">
+        <strong>注文 #${escHtml(o.order_id)}</strong>
+        ${statusBadge(o.status)}
+      </div>
+      <div class="order-meta">
+        建物: ${escHtml(o.building_code)} ·
+        配送: ${escHtml(o.delivery_date)} ·
+        締切: ${escHtml(o.deadline)}
+      </div>
+      <ul class="order-items">
+        ${o.items.map(i => `<li>商品ID: ${escHtml(i.product_id)} × ${i.qty}個 (¥${i.unit_price_jpy.toLocaleString()}/個)</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+    btn.setAttribute('aria-selected', btn.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === 'tab-' + tabName);
+  });
+  if (tabName === 'orders') loadOrders();
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ── Escape helper ─────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+loadProducts();
+</script>
+</body>
+</html>
