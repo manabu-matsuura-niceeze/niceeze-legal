@@ -25,10 +25,10 @@ from typing import Dict, Any
 # 保持期間ルール定義
 # ---------------------------------------------------------------------------
 RETENTION_RULES: Dict[str, Dict[str, Any]] = {
-    "resident": {"days": 3 * 365, "table": "residents"},           # 退会後3年
-    "delivery_history": {"days": 2 * 365, "table": "delivery_records"},  # 最終利用から2年
-    "ai_support_log": {"days": 90, "table": "support_logs"},       # 90日
-    "access_log": {"days": 180, "table": "access_logs"},           # 180日
+    "resident": {"days": 3 * 365, "table": "residents", "anonymize_instead_of_delete": True},           # 退会後3年（匿名化）
+    "delivery_history": {"days": 2 * 365, "table": "delivery_records", "anonymize_instead_of_delete": False},  # 最終利用から2年（完全削除）
+    "ai_support_log": {"days": 90, "table": "support_logs", "anonymize_instead_of_delete": False},       # 90日（完全削除）
+    "access_log": {"days": 180, "table": "access_logs", "anonymize_instead_of_delete": False},           # 180日（完全削除）
 }
 
 # ---------------------------------------------------------------------------
@@ -86,6 +86,110 @@ class DataRetentionBatch:
         """コマンドライン引数から --dry-run フラグを確認する"""
         return "--dry-run" in sys.argv
 
+    def _anonymize_record(self, record: dict, table: str) -> dict:
+        """src/common/anonymizer.py の anonymize_record を呼ぶ"""
+        import sys
+        import os
+        # プロジェクトルートをパスに追加
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        from src.common.anonymizer import anonymize_record
+        return anonymize_record(record)
+
+    def _process_table(self, rule: dict, dry_run: bool, conn: Any, rule_name: str) -> dict:
+        """
+        anonymize_instead_of_delete=True の場合:
+          → anonymize_record() を呼んで匿名化済みレコードに更新
+        False の場合:
+          → 既存の削除処理
+        Returns: {table, action: 'anonymize'|'delete', count: int}
+        """
+        table = rule["table"]
+        days = rule["days"]
+        anonymize = rule.get("anonymize_instead_of_delete", False)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            conn.execute(f"SELECT 1 FROM {table} LIMIT 1")  # nosec B608
+        except sqlite3.OperationalError:
+            _log("WARN", f"テーブルが存在しません: {table}", rule=rule_name)
+            return {"table": table, "action": "anonymize" if anonymize else "delete", "count": 0, "skipped": True}
+
+        cursor = conn.execute(  # nosec B608
+            f"SELECT COUNT(*) FROM {table} WHERE deleted_at <= ?",
+            (cutoff_str,),
+        )
+        count = cursor.fetchone()[0]
+        action = "anonymize" if anonymize else "delete"
+
+        if dry_run:
+            _log(
+                "INFO",
+                f"[DRY RUN] 対象",
+                rule=rule_name,
+                table=table,
+                action=action,
+                retention_days=days,
+                cutoff=cutoff_str,
+                target_count=count,
+            )
+        elif anonymize:
+            # 匿名化処理: 対象レコードを取得して匿名化後に更新
+            rows_cursor = conn.execute(  # nosec B608
+                f"SELECT * FROM {table} WHERE deleted_at <= ?",
+                (cutoff_str,),
+            )
+            rows_cursor.row_factory = None
+            columns = [desc[0] for desc in rows_cursor.description]
+            rows = rows_cursor.fetchall()
+            for row in rows:
+                record = dict(zip(columns, row))
+                anonymized = self._anonymize_record(record, table)
+                # 主キー(id)以外のフィールドを更新
+                update_fields = {k: v for k, v in anonymized.items() if k != 'id'}
+                if update_fields:
+                    set_clause = ', '.join(f"{k} = ?" for k in update_fields)
+                    values = list(update_fields.values()) + [record.get('id')]
+                    conn.execute(  # nosec B608
+                        f"UPDATE {table} SET {set_clause} WHERE id = ?",
+                        values,
+                    )
+            conn.commit()
+            _log(
+                "INFO",
+                "匿名化完了",
+                rule=rule_name,
+                table=table,
+                retention_days=days,
+                cutoff=cutoff_str,
+                anonymized_count=count,
+            )
+        else:
+            conn.execute(  # nosec B608
+                f"DELETE FROM {table} WHERE deleted_at <= ?",
+                (cutoff_str,),
+            )
+            conn.commit()
+            _log(
+                "INFO",
+                "削除完了",
+                rule=rule_name,
+                table=table,
+                retention_days=days,
+                cutoff=cutoff_str,
+                deleted_count=count,
+            )
+
+        return {
+            "table": table,
+            "action": action,
+            "retention_days": days,
+            "cutoff": cutoff_str,
+            "count": count,
+        }
+
     def run(self, dry_run: bool = True) -> Dict[str, Any]:
         """保持期間超過レコードの削除（または件数カウント）を実行する
 
@@ -103,58 +207,8 @@ class DataRetentionBatch:
 
         try:
             for rule_name, rule in RETENTION_RULES.items():
-                table = rule["table"]
-                days = rule["days"]
-                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-                cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
-
-                try:
-                    # テーブルが存在するか確認
-                    conn.execute(f"SELECT 1 FROM {table} LIMIT 1")  # nosec B608
-                except sqlite3.OperationalError:
-                    _log("WARN", f"テーブルが存在しません: {table}", rule=rule_name)
-                    result["tables"][rule_name] = {"table": table, "count": 0, "skipped": True}
-                    continue
-
-                # 削除対象件数を取得
-                cursor = conn.execute(  # nosec B608
-                    f"SELECT COUNT(*) FROM {table} WHERE deleted_at <= ?",
-                    (cutoff_str,),
-                )
-                count = cursor.fetchone()[0]
-
-                if dry_run:
-                    _log(
-                        "INFO",
-                        f"[DRY RUN] 削除対象",
-                        rule=rule_name,
-                        table=table,
-                        retention_days=days,
-                        cutoff=cutoff_str,
-                        target_count=count,
-                    )
-                else:
-                    conn.execute(  # nosec B608
-                        f"DELETE FROM {table} WHERE deleted_at <= ?",
-                        (cutoff_str,),
-                    )
-                    conn.commit()
-                    _log(
-                        "INFO",
-                        f"削除完了",
-                        rule=rule_name,
-                        table=table,
-                        retention_days=days,
-                        cutoff=cutoff_str,
-                        deleted_count=count,
-                    )
-
-                result["tables"][rule_name] = {
-                    "table": table,
-                    "retention_days": days,
-                    "cutoff": cutoff_str,
-                    "count": count,
-                }
+                table_result = self._process_table(rule, dry_run, conn, rule_name)
+                result["tables"][rule_name] = table_result
 
         finally:
             # 外部から渡された接続は閉じない
