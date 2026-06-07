@@ -13,14 +13,9 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build and push Docker image
-        run: |
-          cd marketing-analytics
-          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/marketing-analytics:${{ github.sha }} .
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/marketing-analytics:${{ github.sha }}
-      - name: Deploy Cloud Run Job
-        run: |
+      - run: |
           gcloud run jobs deploy marketing-analytics \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/marketing-analytics:${{ github.sha }} \
             --region asia-northeast1 \
+            --schedule "0 21 * * *" \
             --project ${{ secrets.GCP_PROJECT_ID }}

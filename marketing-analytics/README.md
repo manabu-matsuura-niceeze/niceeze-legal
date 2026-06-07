@@ -1,25 +1,34 @@
 # NiceEze マーケティング KPI 自動収集システム
 
-DEV-MKT-001 v1.0 — Phase 1実装済み
+Phase 1: X API + Google Drive保存 + Slack通知
 
-## Phase 1: X API + Drive保存 + Slack通知
+## セットアップ
 
 ```bash
-# dry-runで動作確認
-PYTHONPATH=. python src/main.py --dry-run
-
-# テスト実行
-PYTHONPATH=. python -m pytest tests/ --tb=short -q
+pip install -r requirements.txt
 ```
 
-## 必要な環境変数（GCP Secret Manager）
+## 環境変数
 
-| 変数名 | 用途 |
-|---|---|
-| X_BEARER_TOKEN | X API Bearer Token |
-| GOOGLE_DRIVE_SA_JSON | Drive書き込み用SA JSON |
-| SLACK_WEBHOOK_URL | Slack Incoming Webhook |
+| 変数名 | 説明 |
+|--------|------|
+| X_BEARER_TOKEN | X API v2 Bearer Token |
+| GOOGLE_DRIVE_SA_JSON | Google Drive Service Account JSON |
+| SLACK_WEBHOOK_URL | Slack Incoming Webhook URL |
+| DRIVE_FOLDER_ID_AUDIT | Google Drive フォルダID |
 
-## 実行スケジュール
+## 実行
 
-GCP Cloud Run Jobs — 毎日 JST 06:00（UTC 21:00）
+```bash
+# ドライラン（API不使用）
+python src/main.py --dry-run
+
+# 本番実行
+python src/main.py
+```
+
+## テスト
+
+```bash
+PYTHONPATH=marketing-analytics python -m pytest marketing-analytics/tests/ --tb=short -q
+```
