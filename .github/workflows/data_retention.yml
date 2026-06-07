@@ -1,0 +1,39 @@
+name: Data Retention Batch
+
+on:
+  schedule:
+    - cron: '0 15 * * *'   # JST 0:00 = UTC 15:00
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'ドライランモード（true: 件数確認のみ / false: 実削除）'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: データ保持期間バッチ実行（ドライラン）
+        run: python scripts/data_retention.py --dry-run
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+
+      - name: データ保持期間バッチ実行（実削除）
+        if: ${{ github.event_name == 'schedule' || github.event.inputs.dry_run == 'false' }}
+        run: python scripts/data_retention.py
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
