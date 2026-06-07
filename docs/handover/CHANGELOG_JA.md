@@ -6,6 +6,67 @@
 
 ---
 
+## [PP-004] 2026-06-07 — TASK-PP4: サービス別同意取得フロー実装
+
+### 追加
+- `src/common/consent_flow.py` — ConsentFlowProcessor（REQUIRED/OPTIONAL/GDPR必須同意分離）
+  - 未成年(16歳未満): guardian_consent_method / guardian_name 必須
+  - EU国コード → gdpr_rights_acknowledged が必須同意に自動追加
+- `src/sbds/residents_api.py` — SBDS居住者登録API port 8091（同意フロー統合）
+- `src/smartlife/users_api.py` — SmartLife利用開始フローAPI port 8092
+- `src/sbds/travel_consent_api.py` — 手ぶら旅行受付フローAPI port 8093
+  - location_info_travel 同意→ location_tracking_enabled=True
+- `tests/test_consent_flow.py` — **42件Pass** / bandit 0件
+
+---
+
+## [PP-003] 2026-06-07 — TASK-PP3: 物流Webhook即時削除処理
+
+### 追加
+- `src/sbds/webhook_receiver.py` — プライバシーポリシー準拠Webhookレシーバー
+  - Step1: HMAC-SHA256署名検証
+  - Step2: メモリ上で処理（DBに保存しない）
+  - Step3: building_code+floor で居住者マスタ照合
+  - Step4a: マッチング成功 → DeliveryRecord（PII除外: tracking_number/氏名/電話番号含めない）
+  - Step4b: マッチング失敗 → エラーコード 'ROOM_NOT_FOUND' のみ
+  - Step5: `raw_payload = None` 即時破棄
+  - Step6: WebhookProcessingLog（処理日時/件数のみ）記録
+- `tests/test_webhook_receiver.py` — **41件Pass** / bandit 0件
+
+---
+
+## [PP-002] 2026-06-07 — TASK-PP2: EU/GDPRフラグ + GDPR権利API
+
+### 追加
+- `src/common/eu_countries.py` — EU27カ国+EEA3カ国セット、`is_gdpr_applicable()`
+- `src/common/gdpr_manager.py` — GDPRManager
+  - 1年以内登録データ → anonymize（法令保存義務）
+  - 1年超 → 完全削除
+  - export_my_data_csv: gdpr_applicable=False → PermissionError
+- `src/common/gdpr_api.py` — port 8090（6エンドポイント）
+  - GET/DELETE /api/v1/privacy/my-data
+  - GET /api/v1/privacy/my-data/export
+  - POST /api/v1/privacy/processing-restriction
+  - POST /api/v1/residents/register（gdpr_applicable自動設定）
+- `tests/test_gdpr.py` — **56件Pass** / bandit 0件
+
+---
+
+## [PP-001] 2026-06-07 — TASK-PP1: 同意管理システム ConsentManager実装
+
+### 追加
+- `src/common/consent_manager.py` — 全サービス共通同意基盤
+  - VALID_CONSENT_TYPES 9種（terms_of_service〜gdpr_rights_acknowledged）
+  - VALID_SERVICES 6種（sbds/smartlife/travel/research/marketing/gov）
+  - grant/revoke/get_status/get_history/is_granted
+  - ai_learning revoke → ai_learning_excluded=True フラグ自動設定
+  - ip_address: SHA-256ハッシュ化（PII最小化）
+  - user_agent: 先頭100文字のみ保存
+- `src/common/consent_api.py` — port 8089（5エンドポイント）
+- `tests/test_consent_manager.py` — **55件Pass** / bandit 0件
+
+---
+
 ## [G2-011] 2026-06-07 — TASK-8: SBDS G2設計開始（要件定義・アーキテクチャ・スケルトン）
 
 ### 追加
