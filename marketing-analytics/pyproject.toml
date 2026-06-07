@@ -1,0 +1,9 @@
+[project]
+name = "niceeze-marketing-analytics"
+version = "1.0.0"
+description = "NiceEze マーケティング KPI 自動収集・日次報告システム"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"

@@ -1,0 +1,17 @@
+name: Test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: marketing-analytics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install pytest bandit
+      - run: python -m pytest tests/ --tb=short -q
+        env:
+          PYTHONPATH: .
+      - run: python -m bandit src/ --severity-level medium -r
