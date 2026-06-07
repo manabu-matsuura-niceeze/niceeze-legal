@@ -52,6 +52,26 @@
 
 ---
 
+## [PP-005] 2026-06-07 — TASK-PP5: 個人情報anonymize処理強化
+
+### 追加・改修
+- `src/common/anonymizer.py` — 構造化データ専用anonymize処理（新規）
+  - `anonymize_name()` → `'***'`
+  - `anonymize_email()` → `'***@***.***'`
+  - `anonymize_phone()` → 下4桁のみ保持 `'****-****-1234'`
+  - `anonymize_address()` → 都道府県レベルのみ（京都府バグ修正: 府/道/県優先マッチ）
+  - `anonymize_qr_token()` → `'ANON-'` + SHA-256ハッシュ先頭12文字（決定論的）
+  - `anonymize_record(record, fields_config)` — 汎用フィールド匿名化（country_code保持）
+  - `is_anonymized(record)` — 匿名化済み確認
+- `scripts/data_retention.py` 改修
+  - `RETENTION_RULES` に `anonymize_instead_of_delete` フラグ追加
+  - 居住者3年: `anonymize_instead_of_delete=True`（統計用データ保持）
+  - 配送履歴2年/AIログ90日/アクセスログ180日: 完全削除
+  - `_anonymize_record()` / `_process_table()` メソッド追加
+- `tests/test_anonymizer.py` — **60件Pass** / bandit 0件
+
+---
+
 ## [PP-001] 2026-06-07 — TASK-PP1: 同意管理システム ConsentManager実装
 
 ### 追加
