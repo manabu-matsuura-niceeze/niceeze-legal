@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NiceEze 荷物追跡</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1f2e;
+      color: #f0f4ff;
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Arial, sans-serif;
+      font-size: 18px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 40px 0;
+    }
+    header {
+      background: #222840;
+      padding: 14px 20px;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { color: #EC6D74; font-size: 22px; font-weight: 700; letter-spacing: 2px; }
+    .lang-btns { display: flex; gap: 8px; }
+    .lang-btn {
+      background: #1a1f2e;
+      color: #6EA7DB;
+      border: 2px solid #6EA7DB;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 15px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .lang-btn.active { background: #6EA7DB; color: #1a1f2e; }
+    main {
+      width: 100%;
+      max-width: 480px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .page-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+    }
+    .arrival-card {
+      background: #222840;
+      border-radius: 16px;
+      padding: 20px 24px;
+      text-align: center;
+    }
+    .arrival-label {
+      font-size: 16px;
+      color: #6EA7DB;
+      margin-bottom: 8px;
+    }
+    .arrival-time {
+      font-size: 32px;
+      font-weight: 700;
+      color: #EC6D74;
+    }
+    .countdown {
+      font-size: 20px;
+      color: #a0b8d0;
+      margin-top: 8px;
+    }
+    .timeline {
+      background: #222840;
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid #2d3556;
+      position: relative;
+    }
+    .timeline-item:last-child { border-bottom: none; }
+    .tl-icon { font-size: 22px; flex-shrink: 0; width: 28px; text-align: center; }
+    .tl-body { flex: 1; }
+    .tl-label { font-size: 18px; font-weight: 600; color: #fff; }
+    .tl-label.pending { color: #6EA7DB; }
+    .tl-time { font-size: 14px; color: #a0b8d0; margin-top: 4px; }
+    .transit-badge {
+      display: inline-block;
+      background: #1a3a5e;
+      color: #6EA7DB;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+    .support-btn {
+      background: #222840;
+      color: #6EA7DB;
+      border: 2px solid #6EA7DB;
+      border-radius: 14px;
+      padding: 20px;
+      font-size: 20px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      touch-action: manipulation;
+      text-decoration: none;
+      display: block;
+      transition: background 0.15s;
+    }
+    .support-btn:active { background: #6EA7DB; color: #1a1f2e; }
+    .section-title {
+      font-size: 16px;
+      color: #6EA7DB;
+      font-weight: 600;
+      margin-bottom: -8px;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">NiceEze</div>
+  <div class="lang-btns">
+    <button class="lang-btn active" id="btn-ja" onclick="setLang('ja')">日本語</button>
+    <button class="lang-btn" id="btn-en" onclick="setLang('en')">English</button>
+  </div>
+</header>
+<main>
+  <div class="page-title" data-ja="お荷物の現在地" data-en="Baggage Location">お荷物の現在地</div>
+
+  <!-- Arrival Card -->
+  <div class="arrival-card">
+    <div class="arrival-label" data-ja="到着予定" data-en="Estimated Arrival">到着予定</div>
+    <div class="arrival-time" id="arrival-time">14:30</div>
+    <div class="countdown" id="countdown"></div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="section-title" data-ja="配送状況" data-en="Delivery Status">配送状況</div>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="tl-icon">✅</div>
+      <div class="tl-body">
+        <div class="tl-label" data-ja="羽田空港 受付完了" data-en="Haneda Airport Check-in Complete">羽田空港 受付完了</div>
+        <div class="tl-time">10:30</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-icon">✅</div>
+      <div class="tl-body">
+        <div class="tl-label" data-ja="羽田HUB 発送" data-en="Haneda HUB Dispatched">羽田HUB 発送</div>
+        <div class="tl-time">12:00</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-icon">🔄</div>
+      <div class="tl-body">
+        <div class="tl-label" data-ja="配送中" data-en="In Transit">配送中</div>
+        <div class="tl-time" data-ja="→ 東京都内 (推定14:30)" data-en="→ Tokyo area (est. 14:30)">→ 東京都内 (推定14:30)</div>
+        <div class="transit-badge" data-ja="配送中" data-en="In Transit">配送中</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-icon">⏳</div>
+      <div class="tl-body">
+        <div class="tl-label pending" data-ja="ホテル到着待ち" data-en="Awaiting Hotel Arrival">ホテル到着待ち</div>
+        <div class="tl-time" data-ja="推定 14:30" data-en="Est. 14:30">推定 14:30</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Support -->
+  <a class="support-btn" href="panel.html" data-ja="サポートに連絡" data-en="Contact Support">サポートに連絡</a>
+</main>
+
+<script>
+(function () {
+  var lang = 'ja';
+  var ARRIVAL_HOUR = 14;
+  var ARRIVAL_MIN = 30;
+
+  function getText(el) {
+    return el.getAttribute('data-' + lang) || el.getAttribute('data-ja') || '';
+  }
+
+  window.setLang = function (l) {
+    lang = l;
+    document.getElementById('btn-ja').classList.toggle('active', l === 'ja');
+    document.getElementById('btn-en').classList.toggle('active', l === 'en');
+    document.querySelectorAll('[data-ja]').forEach(function (el) {
+      el.textContent = getText(el);
+    });
+    document.documentElement.lang = l;
+  };
+
+  function updateCountdown() {
+    var now = new Date();
+    var arrival = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ARRIVAL_HOUR, ARRIVAL_MIN, 0);
+    var diff = arrival - now;
+    var el = document.getElementById('countdown');
+    if (diff <= 0) {
+      el.textContent = lang === 'en' ? 'Arrived' : '到着済み';
+      return;
+    }
+    var h = Math.floor(diff / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    var s = Math.floor((diff % 60000) / 1000);
+    var parts = [];
+    if (h > 0) { parts.push(h + (lang === 'en' ? 'h ' : '時間')); }
+    parts.push((m < 10 ? '0' : '') + m + (lang === 'en' ? 'm ' : '分'));
+    parts.push((s < 10 ? '0' : '') + s + (lang === 'en' ? 's' : '秒'));
+    el.textContent = (lang === 'en' ? 'In ' : 'あと ') + parts.join('');
+  }
+
+  setLang('ja');
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+}());
+</script>
+</body>
+</html>

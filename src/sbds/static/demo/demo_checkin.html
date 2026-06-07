@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NiceEze 出発拠点チェックイン</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1f2e;
+      color: #f0f4ff;
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Arial, sans-serif;
+      font-size: 28px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #222840;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+    }
+    .logo { color: #EC6D74; font-size: 30px; font-weight: 700; letter-spacing: 2px; }
+    .lang-btns { display: flex; gap: 10px; }
+    .lang-btn {
+      background: #1a1f2e;
+      color: #6EA7DB;
+      border: 2px solid #6EA7DB;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 22px;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.2s, color 0.2s;
+    }
+    .lang-btn.active { background: #6EA7DB; color: #1a1f2e; }
+    main {
+      margin-top: 90px;
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+    .screen { display: none; width: 100%; flex-direction: column; align-items: center; gap: 32px; }
+    .screen.active { display: flex; }
+    .title { font-size: 38px; font-weight: 700; color: #fff; text-align: center; }
+    .subtitle { font-size: 26px; color: #6EA7DB; text-align: center; }
+    .big-btn {
+      background: #EC6D74;
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      padding: 36px 64px;
+      font-size: 34px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      min-height: 120px;
+      touch-action: manipulation;
+      transition: background 0.15s;
+      letter-spacing: 1px;
+    }
+    .big-btn:active { background: #d45a61; }
+    .big-btn.secondary {
+      background: #6EA7DB;
+      font-size: 30px;
+      min-height: 100px;
+      padding: 28px 48px;
+    }
+    .big-btn.secondary:active { background: #5090c2; }
+    .size-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; }
+    .size-btn {
+      background: #222840;
+      color: #f0f4ff;
+      border: 3px solid #6EA7DB;
+      border-radius: 14px;
+      padding: 28px 12px;
+      font-size: 28px;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.15s, color 0.15s;
+      text-align: center;
+    }
+    .size-btn.selected { background: #6EA7DB; color: #1a1f2e; }
+    .count-row { display: flex; align-items: center; gap: 24px; font-size: 34px; }
+    .count-btn {
+      background: #222840;
+      color: #6EA7DB;
+      border: 2px solid #6EA7DB;
+      border-radius: 50%;
+      width: 72px; height: 72px;
+      font-size: 36px;
+      cursor: pointer;
+      touch-action: manipulation;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .count-val { min-width: 60px; text-align: center; font-weight: 700; color: #fff; }
+    .qr-box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-svg { width: 200px; height: 200px; }
+    .qr-id {
+      font-size: 26px;
+      color: #6EA7DB;
+      font-family: monospace;
+      text-align: center;
+      letter-spacing: 2px;
+      word-break: break-all;
+    }
+    .info-card {
+      background: #222840;
+      border-radius: 16px;
+      padding: 24px 32px;
+      width: 100%;
+      font-size: 26px;
+      color: #a0b8d0;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .step-dots { display: flex; gap: 12px; justify-content: center; }
+    .dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #222840;
+      border: 2px solid #6EA7DB;
+    }
+    .dot.active { background: #EC6D74; border-color: #EC6D74; }
+    .dot.done { background: #6EA7DB; border-color: #6EA7DB; }
+    .field-label { font-size: 26px; color: #6EA7DB; margin-bottom: 12px; }
+    .field-section { width: 100%; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">NiceEze</div>
+  <div class="lang-btns">
+    <button class="lang-btn active" id="btn-ja" onclick="setLang('ja')">日本語</button>
+    <button class="lang-btn" id="btn-en" onclick="setLang('en')">English</button>
+  </div>
+</header>
+<main>
+  <div class="step-dots">
+    <div class="dot active" id="dot0"></div>
+    <div class="dot" id="dot1"></div>
+    <div class="dot" id="dot2"></div>
+  </div>
+
+  <!-- Screen 1: Welcome -->
+  <div class="screen active" id="screen-welcome">
+    <div class="title" data-ja="ようこそ 羽田空港へ" data-en="Welcome to Haneda Airport">ようこそ 羽田空港へ</div>
+    <div class="subtitle" data-ja="NiceEze 手ぶら旅行サービス" data-en="NiceEze Hands-Free Travel Service">NiceEze 手ぶら旅行サービス</div>
+    <button class="big-btn" onclick="goToStep(1)" data-ja="荷物を預ける" data-en="Check In Baggage">荷物を預ける</button>
+  </div>
+
+  <!-- Screen 2: Baggage Info -->
+  <div class="screen" id="screen-baggage">
+    <div class="title" data-ja="荷物情報入力" data-en="Baggage Information">荷物情報入力</div>
+    <div class="field-section">
+      <div class="field-label" data-ja="個数" data-en="Number of Bags">個数</div>
+      <div class="count-row">
+        <button class="count-btn" onclick="changeCount(-1)">－</button>
+        <div class="count-val" id="count-display">1</div>
+        <button class="count-btn" onclick="changeCount(1)">＋</button>
+      </div>
+    </div>
+    <div class="field-section">
+      <div class="field-label" data-ja="サイズ" data-en="Size">サイズ</div>
+      <div class="size-grid">
+        <button class="size-btn" onclick="selectSize('small', this)" data-ja="小" data-en="Small">小</button>
+        <button class="size-btn" onclick="selectSize('medium', this)" data-ja="中" data-en="Medium">中</button>
+        <button class="size-btn selected" onclick="selectSize('large', this)" data-ja="大" data-en="Large">大</button>
+      </div>
+    </div>
+    <button class="big-btn" onclick="issueQR()" data-ja="QRを発行する" data-en="Issue QR Code">QRを発行する</button>
+    <button class="big-btn secondary" onclick="goToStep(0)" data-ja="戻る" data-en="Back">戻る</button>
+  </div>
+
+  <!-- Screen 3: QR Complete -->
+  <div class="screen" id="screen-qr">
+    <div class="title" data-ja="QRコードが発行されました" data-en="QR Code Issued">QRコードが発行されました</div>
+    <div class="qr-box">
+      <svg class="qr-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" id="qr-svg" aria-label="QR Code"></svg>
+    </div>
+    <div class="qr-id" id="qr-id-display"></div>
+    <div class="info-card" data-ja="ホテルで提示してください" data-en="Show this at your hotel">ホテルで提示してください</div>
+    <button class="big-btn secondary" onclick="goToStep(0)" data-ja="最初に戻る" data-en="Return to Start">最初に戻る</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  var lang = 'ja';
+  var baggageCount = 1;
+  var selectedSize = 'large';
+
+  function getText(el) {
+    return el.getAttribute('data-' + lang) || el.getAttribute('data-ja') || '';
+  }
+
+  window.setLang = function (l) {
+    lang = l;
+    document.getElementById('btn-ja').classList.toggle('active', l === 'ja');
+    document.getElementById('btn-en').classList.toggle('active', l === 'en');
+    document.querySelectorAll('[data-ja]').forEach(function (el) {
+      el.textContent = getText(el);
+    });
+    document.documentElement.lang = l;
+  };
+
+  window.goToStep = function (step) {
+    var screens = ['screen-welcome', 'screen-baggage', 'screen-qr'];
+    screens.forEach(function (id, i) {
+      document.getElementById(id).classList.toggle('active', i === step);
+    });
+    ['dot0', 'dot1', 'dot2'].forEach(function (id, i) {
+      var d = document.getElementById(id);
+      d.classList.remove('active', 'done');
+      if (i === step) { d.classList.add('active'); }
+      else if (i < step) { d.classList.add('done'); }
+    });
+    window.scrollTo(0, 0);
+  };
+
+  window.changeCount = function (delta) {
+    baggageCount = Math.max(1, Math.min(9, baggageCount + delta));
+    document.getElementById('count-display').textContent = baggageCount;
+  };
+
+  window.selectSize = function (size, btn) {
+    selectedSize = size;
+    document.querySelectorAll('.size-btn').forEach(function (b) {
+      b.classList.remove('selected');
+    });
+    btn.classList.add('selected');
+  };
+
+  function generateQRId() {
+    return 'DEMO-' + Date.now().toString(36).toUpperCase();
+  }
+
+  function drawQR(svgEl, text) {
+    svgEl.innerHTML = '';
+    var size = 21;
+    var cell = Math.floor(200 / size);
+    var hash = 0;
+    for (var i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    }
+    var ns = 'http://www.w3.org/2000/svg';
+    function rect(x, y, w, h, fill) {
+      var r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x', x); r.setAttribute('y', y);
+      r.setAttribute('width', w); r.setAttribute('height', h);
+      r.setAttribute('fill', fill);
+      svgEl.appendChild(r);
+    }
+    rect(0, 0, 200, 200, '#fff');
+    // Finder patterns
+    function finder(ox, oy) {
+      rect(ox * cell, oy * cell, 7 * cell, 7 * cell, '#000');
+      rect((ox + 1) * cell, (oy + 1) * cell, 5 * cell, 5 * cell, '#fff');
+      rect((ox + 2) * cell, (oy + 2) * cell, 3 * cell, 3 * cell, '#000');
+    }
+    finder(0, 0); finder(14, 0); finder(0, 14);
+    // Data modules
+    for (var row = 0; row < size; row++) {
+      for (var col = 0; col < size; col++) {
+        if ((row < 8 && col < 8) || (row < 8 && col >= 14) || (row >= 14 && col < 8)) { continue; }
+        var bit = ((hash ^ (row * 37 + col * 19 + text.charCodeAt((row + col) % text.length))) & 1);
+        if (bit) { rect(col * cell, row * cell, cell, cell, '#000'); }
+      }
+    }
+  }
+
+  window.issueQR = function () {
+    var qrId = generateQRId();
+    var payload = JSON.stringify({ baggage_count: baggageCount, baggage_size: selectedSize });
+    fetch('/api/v1/demo/scenario/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload
+    }).then(function (r) {
+      return r.json();
+    }).then(function (data) {
+      if (data && data.qr_id) { qrId = data.qr_id; }
+    }).catch(function () {
+      // API unavailable — use locally generated QR ID
+    }).finally(function () {
+      document.getElementById('qr-id-display').textContent = qrId;
+      drawQR(document.getElementById('qr-svg'), qrId);
+      goToStep(2);
+      setLang(lang);
+    });
+  };
+
+  setLang('ja');
+}());
+</script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NiceEze ホテル受取パネル</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1f2e;
+      color: #f0f4ff;
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Arial, sans-serif;
+      font-size: 28px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #222840;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+    }
+    .logo { color: #EC6D74; font-size: 30px; font-weight: 700; letter-spacing: 2px; }
+    .lang-btns { display: flex; gap: 10px; }
+    .lang-btn {
+      background: #1a1f2e;
+      color: #6EA7DB;
+      border: 2px solid #6EA7DB;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 22px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .lang-btn.active { background: #6EA7DB; color: #1a1f2e; }
+    main {
+      margin-top: 90px;
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+    .screen { display: none; width: 100%; flex-direction: column; align-items: center; gap: 32px; }
+    .screen.active { display: flex; }
+    .title { font-size: 36px; font-weight: 700; color: #fff; text-align: center; }
+    .subtitle { font-size: 26px; color: #6EA7DB; text-align: center; }
+    .big-btn {
+      background: #EC6D74;
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      padding: 36px 64px;
+      font-size: 34px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      min-height: 120px;
+      touch-action: manipulation;
+      transition: background 0.15s;
+    }
+    .big-btn:active { background: #d45a61; }
+    .big-btn.secondary {
+      background: #6EA7DB;
+      font-size: 30px;
+      min-height: 100px;
+      padding: 28px 48px;
+    }
+    .big-btn.secondary:active { background: #5090c2; }
+    .big-btn:disabled {
+      background: #444;
+      color: #888;
+      cursor: not-allowed;
+    }
+    .input-field {
+      width: 100%;
+      background: #222840;
+      color: #f0f4ff;
+      border: 3px solid #6EA7DB;
+      border-radius: 14px;
+      padding: 24px 20px;
+      font-size: 30px;
+      text-align: center;
+      letter-spacing: 2px;
+      outline: none;
+    }
+    .input-field:focus { border-color: #EC6D74; }
+    .info-card {
+      background: #222840;
+      border-radius: 16px;
+      padding: 28px 32px;
+      width: 100%;
+      font-size: 26px;
+      color: #f0f4ff;
+      line-height: 1.8;
+    }
+    .info-row { display: flex; justify-content: space-between; gap: 16px; }
+    .info-label { color: #6EA7DB; }
+    .info-value { color: #fff; font-weight: 600; }
+    .badge {
+      display: inline-block;
+      background: #2a6e2a;
+      color: #7eff7e;
+      border-radius: 8px;
+      padding: 6px 18px;
+      font-size: 22px;
+      margin-top: 8px;
+    }
+    .warning-box {
+      background: #3a2800;
+      border: 2px solid #EC6D74;
+      border-radius: 14px;
+      padding: 20px 24px;
+      width: 100%;
+      font-size: 24px;
+      color: #ffb060;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .approval-box {
+      background: #222840;
+      border: 3px solid #6EA7DB;
+      border-radius: 16px;
+      padding: 28px 32px;
+      width: 100%;
+      font-size: 30px;
+      color: #6EA7DB;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .step-dots { display: flex; gap: 12px; justify-content: center; }
+    .dot { width: 14px; height: 14px; border-radius: 50%; background: #222840; border: 2px solid #6EA7DB; }
+    .dot.active { background: #EC6D74; border-color: #EC6D74; }
+    .dot.done { background: #6EA7DB; border-color: #6EA7DB; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">NiceEze Hotel</div>
+  <div class="lang-btns">
+    <button class="lang-btn active" id="btn-ja" onclick="setLang('ja')">日本語</button>
+    <button class="lang-btn" id="btn-en" onclick="setLang('en')">English</button>
+  </div>
+</header>
+<main>
+  <div class="step-dots">
+    <div class="dot active" id="dot0"></div>
+    <div class="dot" id="dot1"></div>
+    <div class="dot" id="dot2"></div>
+  </div>
+
+  <!-- Screen 1: QR Scan -->
+  <div class="screen active" id="screen-scan">
+    <div class="title" data-ja="QRコードを入力" data-en="Enter QR Code">QRコードを入力</div>
+    <div class="subtitle" data-ja="旅行者のQR IDを入力してください" data-en="Enter traveler QR ID below">旅行者のQR IDを入力してください</div>
+    <input
+      class="input-field"
+      id="qr-input"
+      type="text"
+      placeholder="DEMO-XXXXXXX"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="characters"
+    >
+    <button class="big-btn" onclick="authenticate()" data-ja="認証" data-en="Authenticate">認証</button>
+  </div>
+
+  <!-- Screen 2: Auth Result -->
+  <div class="screen" id="screen-result">
+    <div class="title" data-ja="認証完了" data-en="Authentication Complete">認証完了</div>
+    <div class="badge" data-ja="到着済み" data-en="Arrived">到着済み</div>
+    <div class="info-card">
+      <div class="info-row">
+        <span class="info-label" data-ja="氏名" data-en="Name">氏名</span>
+        <span class="info-value" id="traveler-name">田中花子</span>
+      </div>
+      <div class="info-row" style="margin-top:16px">
+        <span class="info-label" data-ja="荷物数" data-en="Bags">荷物数</span>
+        <span class="info-value" id="traveler-bags">1個</span>
+      </div>
+      <div class="info-row" style="margin-top:16px">
+        <span class="info-label" data-ja="ステータス" data-en="Status">ステータス</span>
+        <span class="info-value" id="traveler-status" data-ja="到着済み" data-en="Arrived">到着済み</span>
+      </div>
+      <div class="info-row" style="margin-top:16px">
+        <span class="info-label">QR ID</span>
+        <span class="info-value" id="result-qr-id" style="font-size:22px;font-family:monospace"></span>
+      </div>
+    </div>
+    <div class="warning-box" data-ja="※ ラック解錠には管理者承認が必要です（Gate D制約）" data-en="* Rack unlock requires admin approval (Gate D constraint)">
+      ※ ラック解錠には管理者承認が必要です（Gate D制約）
+    </div>
+    <button class="big-btn" onclick="unlockRack()" data-ja="ラック解錠" data-en="Unlock Rack">ラック解錠</button>
+    <button class="big-btn secondary" onclick="goToStep(0)" data-ja="戻る" data-en="Back">戻る</button>
+  </div>
+
+  <!-- Screen 3: Unlock / Approval -->
+  <div class="screen" id="screen-unlock">
+    <div class="title" data-ja="管理者承認待ち" data-en="Awaiting Admin Approval">管理者承認待ち</div>
+    <div class="approval-box">
+      <div data-ja="解錠リクエストを送信しました。" data-en="Unlock request sent.">解錠リクエストを送信しました。</div>
+      <div style="margin-top:16px; font-size:26px; color:#a0b8d0"
+           data-ja="管理者の承認後にラックが解錠されます。" data-en="Rack will unlock after admin approval.">
+        管理者の承認後にラックが解錠されます。
+      </div>
+    </div>
+    <div class="warning-box" data-ja="Gate D: 管理者承認なしの解錠は禁止されています" data-en="Gate D: Unlock without admin approval is prohibited">
+      Gate D: 管理者承認なしの解錠は禁止されています
+    </div>
+    <button class="big-btn secondary" onclick="goToStep(0)" data-ja="最初に戻る" data-en="Return to Start">最初に戻る</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  var lang = 'ja';
+  var scannedQrId = '';
+
+  var MOCK_TRAVELER = {
+    name: '田中花子',
+    name_en: 'Hanako Tanaka',
+    bags: 1,
+    status_ja: '到着済み',
+    status_en: 'Arrived'
+  };
+
+  function getText(el) {
+    return el.getAttribute('data-' + lang) || el.getAttribute('data-ja') || '';
+  }
+
+  window.setLang = function (l) {
+    lang = l;
+    document.getElementById('btn-ja').classList.toggle('active', l === 'ja');
+    document.getElementById('btn-en').classList.toggle('active', l === 'en');
+    document.querySelectorAll('[data-ja]').forEach(function (el) {
+      el.textContent = getText(el);
+    });
+    document.documentElement.lang = l;
+    // Keep dynamic values
+    if (scannedQrId) {
+      document.getElementById('result-qr-id').textContent = scannedQrId;
+      document.getElementById('traveler-name').textContent =
+        l === 'en' ? MOCK_TRAVELER.name_en : MOCK_TRAVELER.name;
+      document.getElementById('traveler-bags').textContent =
+        MOCK_TRAVELER.bags + (l === 'en' ? ' bag(s)' : '個');
+    }
+  };
+
+  window.goToStep = function (step) {
+    var screens = ['screen-scan', 'screen-result', 'screen-unlock'];
+    screens.forEach(function (id, i) {
+      document.getElementById(id).classList.toggle('active', i === step);
+    });
+    ['dot0', 'dot1', 'dot2'].forEach(function (id, i) {
+      var d = document.getElementById(id);
+      d.classList.remove('active', 'done');
+      if (i === step) { d.classList.add('active'); }
+      else if (i < step) { d.classList.add('done'); }
+    });
+    window.scrollTo(0, 0);
+  };
+
+  window.authenticate = function () {
+    var inputEl = document.getElementById('qr-input');
+    var qrId = inputEl.value.trim().toUpperCase();
+    if (!qrId) {
+      inputEl.focus();
+      return;
+    }
+    scannedQrId = qrId;
+
+    function showResult(traveler) {
+      document.getElementById('result-qr-id').textContent = scannedQrId;
+      document.getElementById('traveler-name').textContent =
+        lang === 'en' ? traveler.name_en : traveler.name;
+      document.getElementById('traveler-bags').textContent =
+        traveler.bags + (lang === 'en' ? ' bag(s)' : '個');
+      goToStep(1);
+      setLang(lang);
+    }
+
+    fetch('/api/v1/demo/scenario/' + encodeURIComponent(qrId))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var t = {
+          name: (data.traveler && data.traveler.name) || MOCK_TRAVELER.name,
+          name_en: (data.traveler && data.traveler.name_en) || MOCK_TRAVELER.name_en,
+          bags: (data.traveler && data.traveler.baggage_count) || MOCK_TRAVELER.bags
+        };
+        showResult(t);
+      })
+      .catch(function () {
+        showResult(MOCK_TRAVELER);
+      });
+  };
+
+  window.unlockRack = function () {
+    // Gate D: admin approval always required — only show approval screen
+    goToStep(2);
+    setLang(lang);
+  };
+
+  setLang('ja');
+}());
+</script>
+</body>
+</html>
